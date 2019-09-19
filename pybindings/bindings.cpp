@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "tennlab.hpp"
+#include "framework.hpp"
 
 #include "network.hpp"
 #include "backend.hpp"
@@ -15,13 +15,13 @@ namespace csp = caspian;
 
 void bind_network(py::module &m);
 void bind_backend(py::module &m);
-void bind_tennlab_processor(py::module &m);
+void bind_processor(py::module &m);
 
 PYBIND11_MODULE(caspian, m) {
     m.doc() = "CASPIAN for Python";
 
-    /* Import TENNLab Framework so that we can access its types */
-    py::module::import("tennlab");
+    /* Import Framework so that we can access its types */
+    py::module::import("neuro");
 
     /* Neuron, Synapse, Network */
     bind_network(m);
@@ -29,8 +29,8 @@ PYBIND11_MODULE(caspian, m) {
     /* Backend, Simulator */
     bind_backend(m);
 
-    /* TENNLab Processor */
-    bind_tennlab_processor(m);
+    /* Framework Processor interface */
+    bind_processor(m);
     
     /* SpikeEncoder utility class */
     py::enum_<csp::SpikeVariable>(m, "SpikeVariable", py::arithmetic())
@@ -44,6 +44,7 @@ PYBIND11_MODULE(caspian, m) {
                 py::arg("dmin") = 0.0f,
                 py::arg("dmax") = 1.0f,
                 py::arg("sv") = csp::SpikeVariable::NumSpikes)
+
         .def(py::pickle(
             [](const csp::SpikeEncoder &en) {
                 return py::make_tuple(en.n_spikes, en.interval, en.dmin, en.dmax, en.sv);
@@ -58,6 +59,7 @@ PYBIND11_MODULE(caspian, m) {
                 return csp::SpikeEncoder(n_spikes, interval, dmin, dmax, sv);
             }
         ))
+
         .def("encode", &csp::SpikeEncoder::encode, py::arg("data"));
 
 }

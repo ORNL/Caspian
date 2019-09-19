@@ -130,6 +130,8 @@ namespace caspian
 
     void Processor::apply_spike(const Spike &s, const vector<int>& network_ids)
     {
+        (void) s;
+        (void) network_ids;
         throw std::invalid_argument("Batch spike is not supported");
     }
 
@@ -157,6 +159,8 @@ namespace caspian
 
     void Processor::run(double duration, const vector<int>& network_ids)
     {
+        (void) duration;
+        (void) network_ids;
         throw std::invalid_argument("Batch run is not supported");
     }
 
@@ -241,7 +245,7 @@ namespace caspian
         dev->clear_activity();
     }
 
-    caspian::Network* Processor::Get_Internal_Network(int network_id) const
+    caspian::Network* Processor::get_internal_network(int network_id) const
     {
         if(network_id != loaded_network_id)
             return nullptr;
@@ -249,12 +253,12 @@ namespace caspian
         return internal_net;
     }
 
-    caspian::Backend* Processor::Get_Backend() const
+    caspian::Backend* Processor::get_backend() const
     {
         return dev;
     }
 
-    json Processor::Get_Configuration() const
+    json Processor::get_configuration() const
     {
         return jconfig;
     }

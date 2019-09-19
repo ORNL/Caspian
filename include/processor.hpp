@@ -55,9 +55,9 @@ namespace caspian
         void clear_activity(int network_id = 0);
 
         /*** ADDED METHODS ***/
-        caspian::Network* Get_Internal_Network(int network_id = 0) const;
-        json Get_Configuration() const;
-        caspian::Backend* Get_Backend() const;
+        caspian::Network* get_internal_network(int network_id = 0) const;
+        json get_configuration() const;
+        caspian::Backend* get_backend() const;
 
     protected:
         caspian::Backend* dev;

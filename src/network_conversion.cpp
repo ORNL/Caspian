@@ -1,3 +1,5 @@
+#include "framework.hpp"
+#include "network.hpp"
 #include "network_conversion.hpp"
 #include "fmt/format.h"
 
@@ -5,83 +7,62 @@ namespace caspian
 {
     static const bool s_debug = false;
 
-    bool network_framework_to_internal(neuro::Network *tn, capsian::Network *net)
+    bool network_framework_to_internal(neuro::Network *tn, caspian::Network *net)
     {
-        using neuro::Node;
-        using neuro::Edge;
+        using neuro::Property;
 
-        // index for each parameter in the appropriate data vector
-        int threshold_id, leak_id, leak_en_id, neuron_delay_id;
-        int weight_id, delay_id;
-
-        // Sanity check pointers
         if(tn == nullptr || net == nullptr)
             return false;
 
-        if(s_debug) fmt::print("Start new conversion\n");
+        const Property* node_threshold = tn->get_node_property("Threshold");
+        const Property* node_leak = nullptr;
+        const Property* node_delay = nullptr;
 
-        // Get definition indicies for Data Vectors
-        threshold_id = get_def_index(tn->Node_Spec, "Threshold");
-        leak_id = get_def_index(tn->Node_Spec, "Leak_Value");
-        leak_en_id = get_def_index(tn->Node_Spec, "Leak_Enable");
-        neuron_delay_id = get_def_index(tn->Node_Spec, "Delay");
-        weight_id = get_def_index(tn->Edge_Spec, "Weight");
-        delay_id = get_def_index(tn->Edge_Spec, "Delay");
+        if(tn->is_node_property("Leak"))
+            node_leak = tn->get_node_property("Leak");
 
-        // check if essential properties exist
-        if(threshold_id < 0 || weight_id < 0)
-            return false;
-    
-        // Add neurons
-        for(Node* node : tn->All_Nodes)
+        if(tn->is_node_property("Delay"))
+            node_delay = tn->get_node_property("Delay");
+
+        const Property* edge_weight = tn->get_edge_property("Weight");
+        const Property* edge_delay = tn->get_edge_property("Delay");
+
+        for(auto nit = tn->begin(); nit != tn->end(); ++nit)
         {
-            int nid = node->Index;
-            int threshold = node->Data->Vals[threshold_id].ll;
-            int delay = 0;
-            int leak = -1;
-            bool leak_enable = false;
+            neuro::Node* node = nit->second.get();
 
-            if(neuron_delay_id >= 0) delay = node->Data->Vals[neuron_delay_id].ll;
-            if(leak_id >= 0) leak = node->Data->Vals[leak_id].ll;
-            if(leak_en_id >= 0) leak_enable = (node->Data->Vals[leak_en_id].ll != 0);
-            if(!leak_enable) leak = -1;
+            int nid = nit->first;
+            int threshold = node->values[node_threshold->index];
+            int leak = -1;
+            int delay = 0;
+
+            if(node_leak != nullptr) leak = node->values[node_leak->index];
+            if(node_delay != nullptr) delay = node->values[node_delay->index];
 
             net->add_neuron(nid, threshold, leak, delay);
 
-            if(node->Input >= 0)
-                net->set_input(nid, node->Input);
+            if(node->input_id >= 0)
+                net->set_input(nid, node->input_id);
 
-            if(node->Output >= 0)
-                net->set_output(nid, node->Output);
-
-            if(s_debug) fmt::print("Add neuron {} -- threshold: {}, delay: {}, in: {}, out: {}\n", nid, threshold, delay, node->Input, node->Output);
+            if(node->output_id >= 0)
+                net->set_output(nid, node->output_id);
         }
 
-        // Add synapses
-        for(Edge* edge : tn->All_Edges)
+        for(auto eit = tn->edges_begin(); eit != tn->edges_end(); ++eit)
         {
-            int from = edge->From->Index;
-            int to = edge->To->Index;
-            int weight = edge->Data->Vals[weight_id].ll;
-            int delay = 0;
-            
-            if(delay_id >= 0) delay = edge->Data->Vals[delay_id].ll; 
+            int from = eit->first.first;
+            int to = eit->first.second;
+            int weight = eit->second->values[edge_weight->index];
+            int delay = eit->second->values[edge_delay->index];
 
-            if(s_debug) fmt::print("Add Synapse {} -> {} -- weight: {}, delay: {}\n", from, to, weight, delay);
-
-            try {
-                net->add_synapse(from, to, weight, delay);
-            } catch(std::runtime_error &e) {
-                fmt::print("Caught & ignoring exception: {}", e.what());
-                fmt::print(" SYNAPSE {} -> {}\n", from, to);
-            }
+            net->add_synapse(from, to, weight, delay);
         }
 
         return true;
     }
 
 
-    bool internal_network_to_tennlab(caspian::Network* /*net*/, TENNLab::Network* /*tn*/)
+    bool internal_network_to_tennlab(caspian::Network* /*net*/, neuro::Network* /*tn*/)
     {
         // TODO
 

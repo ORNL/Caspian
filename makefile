@@ -95,11 +95,7 @@ $(OBJECTS): $(OBJ)/%.o : $(SRC)/%.cpp $(HEADERS) | $(OBJ)
 $(TL_OBJECTS): $(OBJ)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(OBJ)
 	$(CXX) $(CFLAGSBASE) -c $< -o $@
 
-#$(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
-#	$(AR) r $@ $^
-#	$(RANLIB) $@
-
-$(LIBCASPIAN): $(OBJECTS) | $(LIB)
+$(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
 	$(AR) r $@ $^
 	$(RANLIB) $@
 
@@ -109,7 +105,7 @@ $(LIBCASPIAN): $(OBJECTS) | $(LIB)
 python: $(PYLIBCASPIAN)
 
 PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/pybindings \
-                 -std=c++14 -fPIC -O3 -fvisibility=hidden -flto
+                 -std=c++14 -fPIC -O3 -fvisibility=hidden -flto=8
 
 BINDING_SOURCES := $(PYBINDINGS)/backend.cpp \
                    $(PYBINDINGS)/network.cpp \
