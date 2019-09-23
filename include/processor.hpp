@@ -54,6 +54,8 @@ namespace caspian
         /* Remove state, keep network loaded */
         void clear_activity(int network_id = 0);
 
+        neuro::PropertyPack get_properties();
+
         /*** ADDED METHODS ***/
         caspian::Network* get_internal_network(int network_id = 0) const;
         json get_configuration() const;
@@ -63,6 +65,7 @@ namespace caspian
         caspian::Backend* dev;
 
         json jconfig;
+        neuro::PropertyPack properties;
 
         int loaded_network_id;
         neuro::Network* api_net;

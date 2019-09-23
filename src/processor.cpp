@@ -27,6 +27,7 @@ namespace caspian
     using std::string;
     using fmt::format;
     using neuro::Spike;
+    using neuro::Property;
 
     Processor::Processor(json& j)
     {
@@ -63,14 +64,43 @@ namespace caspian
         }
 
         // Add neuron parameters
-        //node_spec.Add_Long_Long("Threshold", jconfig["Min_Threshold"], jconfig["Max_Threshold"]);
-        //node_spec.Add_Long_Long("Leak_Value", jconfig["Min_Leak"], jconfig["Max_Leak"]);
-        //node_spec.Add_Long_Long("Delay", jconfig["Min_Axon_Delay"], jconfig["Max_Axon_Delay"]);
-        //if(jconfig["Leak_Enable"]) node_spec.Add_Boolean("Leak_Enable");
+        properties.nodes.insert({"Threshold", 
+                Property("Threshold", 0, 1, 
+                        jconfig["Min_Threshold"], 
+                        jconfig["Max_Threshold"], 
+                        neuro::Property::Type::INTEGER)
+        });
+
+        properties.nodes.insert({"Leak_Value",
+                Property("Leak_Value", 1, 1, 
+                        jconfig["Min_Leak"], 
+                        jconfig["Max_Leak"], 
+                        neuro::Property::Type::INTEGER)
+        });
+
+        properties.nodes.insert({"Delay",
+                Property("Delay", 2, 1, 
+                        jconfig["Min_Axon_Delay"], 
+                        jconfig["Max_Axon_Delay"], 
+                        neuro::Property::Type::INTEGER)
+        });
 
         // Add synapse parameters
-        //edge_spec.Add_Long_Long("Weight", jconfig["Min_Weight"], jconfig["Max_Weight"]);
-        //edge_spec.Add_Long_Long("Delay",  jconfig["Min_Synapse_Delay"], jconfig["Max_Synapse_Delay"]);
+        properties.edges.insert({"Weight",
+                Property("Weight", 0, 1,
+                        jconfig["Min_Weight"],
+                        jconfig["Max_Weight"],
+                        neuro::Property::Type::INTEGER)
+        });
+
+        properties.edges.insert({"Delay",
+                Property("Delay", 1, 1,
+                        jconfig["Min_Synapse_Delay"],
+                        jconfig["Max_Synapse_Delay"],
+                        neuro::Property::Type::INTEGER)
+        });
+
+        //if(jconfig["Leak_Enable"]) node_spec.Add_Boolean("Leak_Enable");
     }
 
     Processor::~Processor()
@@ -81,6 +111,11 @@ namespace caspian
 
         if(internal_net != nullptr)
             delete internal_net;
+    }
+
+    neuro::PropertyPack Processor::get_properties()
+    {
+        return properties;
     }
 
     bool Processor::load_network(neuro::Network *n, int network_id)
