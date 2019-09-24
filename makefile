@@ -23,8 +23,8 @@ SRC = src
 EO = eo
 UTILS = utils
 TST = test
-PYBINDINGS = pybindings
-PYBUILD = pybuild
+PYBINDINGS = bindings
+PYBUILD = build
 PYBUILD_BINDINGS = $(PYBUILD)/bindings
 PYBUILD_SUFFIX := $(shell python3-config --extension-suffix)
 
@@ -104,7 +104,7 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
 
 python: $(PYLIBCASPIAN)
 
-PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/pybindings \
+PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) \
                  -std=c++14 -fPIC -O3 -fvisibility=hidden -flto=8
 
 BINDING_SOURCES := $(PYBINDINGS)/backend.cpp \
@@ -117,7 +117,7 @@ BINDING_OBJECTS := $(patsubst $(PYBINDINGS)/%.cpp,$(PYBUILD_BINDINGS)/%.o,$(BIND
 PYBUILD_OBJECTS := $(patsubst $(SRC)/%.cpp,$(PYBUILD)/%.o,$(SOURCES)) \
 		   $(patsubst $(SRC)/%.cpp,$(PYBUILD)/%.o,$(TL_SOURCES))
 
-PYBUILD_TL_OBJECTS := $(wildcard $(ROOT)/pybuild/*.o)
+PYBUILD_TL_OBJECTS := $(wildcard $(ROOT)/$(PYBUILD)/*.o)
 
 $(BINDING_OBJECTS): $(PYBUILD_BINDINGS)/%.o : $(PYBINDINGS)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(PYBUILD_BINDINGS)
 	$(CXX) $(PYBUILD_FLAGS) -c $< -o $@
