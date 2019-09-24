@@ -52,7 +52,7 @@ clean:
 LIBCASPIAN = $(LIB)/libcaspian.a
 LIBFRAMEWORK = $(ROOT)/lib/libframework.a
 PYLIBCASPIAN = $(PYBUILD)/caspian$(PYBUILD_SUFFIX)
-PYFRAMEWORK  = $(ROOT)/pybuild/neuro$(PYBUILD_SUFFIX)
+PYFRAMEWORK  = $(ROOT)/build/neuro$(PYBUILD_SUFFIX)
 
 $(LIBFRAMEWORK): $(ROOT_INCLUDE)/framework.hpp
 	$(MAKE) -C $(ROOT)
@@ -105,7 +105,16 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
 python: $(PYLIBCASPIAN)
 
 PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) \
-                 -std=c++14 -fPIC -O3 -fvisibility=hidden -flto=8
+                 -std=c++14 -fPIC -O3 -fvisibility=hidden
+
+# Patch symbol linkage issues for Mac OS
+OS := $(shell uname)
+ifeq ($(OS),"Darwin")
+    PYBUILD_FLAGS += -undefined dynamic_lookup -flto
+else
+    PYBUILD_FLAGS += -flto=8
+endif
+
 
 BINDING_SOURCES := $(PYBINDINGS)/backend.cpp \
                    $(PYBINDINGS)/network.cpp \
