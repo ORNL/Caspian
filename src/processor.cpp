@@ -59,48 +59,16 @@ namespace caspian
 
         // Cannot continue with an invalid configuration
         if(!json_chk.empty())
-        {
             throw std::runtime_error(json_chk);
-        }
 
         // Add neuron parameters
-        properties.nodes.insert({"Threshold", 
-                Property("Threshold", 0, 1, 
-                        jconfig["Min_Threshold"], 
-                        jconfig["Max_Threshold"], 
-                        neuro::Property::Type::INTEGER)
-        });
-
-        properties.nodes.insert({"Leak_Value",
-                Property("Leak_Value", 1, 1, 
-                        jconfig["Min_Leak"], 
-                        jconfig["Max_Leak"], 
-                        neuro::Property::Type::INTEGER)
-        });
-
-        properties.nodes.insert({"Delay",
-                Property("Delay", 2, 1, 
-                        jconfig["Min_Axon_Delay"], 
-                        jconfig["Max_Axon_Delay"], 
-                        neuro::Property::Type::INTEGER)
-        });
+        properties.add_node_property("Threshold", jconfig["Min_Threshold"], jconfig["Max_Threshold"], neuro::Property::Type::INTEGER, 1);
+        properties.add_node_property("Leak_Value", jconfig["Min_Leak"], jconfig["Max_Leak"], neuro::Property::Type::INTEGER, 1);
+        properties.add_node_property("Delay", jconfig["Min_Axon_Delay"], jconfig["Max_Axon_Delay"], neuro::Property::Type::INTEGER, 1);
 
         // Add synapse parameters
-        properties.edges.insert({"Weight",
-                Property("Weight", 0, 1,
-                        jconfig["Min_Weight"],
-                        jconfig["Max_Weight"],
-                        neuro::Property::Type::INTEGER)
-        });
-
-        properties.edges.insert({"Delay",
-                Property("Delay", 1, 1,
-                        jconfig["Min_Synapse_Delay"],
-                        jconfig["Max_Synapse_Delay"],
-                        neuro::Property::Type::INTEGER)
-        });
-
-        //if(jconfig["Leak_Enable"]) node_spec.Add_Boolean("Leak_Enable");
+        properties.add_edge_property("Weight",  jconfig["Min_Weight"], jconfig["Max_Weight"], neuro::Property::Type::INTEGER, 1);
+        properties.add_edge_property("Delay", jconfig["Min_Synapse_Delay"], jconfig["Max_Synapse_Delay"], neuro::Property::Type::INTEGER, 1);
     }
 
     Processor::~Processor()

@@ -31,3 +31,4 @@ __pycache__
 *_network.txt
 *.net
 *.caspian
+ucaspian/

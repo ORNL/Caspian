@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <err.h>
 #include <sys/ioctl.h>
-//#include <linux/serial.h>
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
@@ -147,42 +146,9 @@ namespace caspian
 
         fcntl(fd, F_SETFL, 0);
 
-#ifdef NOT_DEFINED
-        int speed = 0;
-        struct serial_struct serial;
-        speed = rate_to_constant(rate);
-
-        if (speed == 0)
-        {
-            /* Custom divisor */
-            memset(&serial, 0, sizeof(struct serial_struct));
-
-            serial.reserved_char[0] = 0;
-
-            if (ioctl(fd, TIOCGSERIAL, &serial) < 0) return -1;
-
-            serial.flags &= ~ASYNC_SPD_MASK;
-            serial.flags |= ASYNC_SPD_CUST;
-
-            serial.custom_divisor = (serial.baud_base + (rate / 2)) / rate;
-
-            if (serial.custom_divisor < 1)
-                serial.custom_divisor = 1;
-
-            if (ioctl(fd, TIOCSSERIAL, &serial) < 0)
-                return -1;
-
-            if (ioctl(fd, TIOCGSERIAL, &serial) < 0)
-                return -1;
-        }
-#endif
-
         memset(&options, 0, sizeof(struct termios));
         tcgetattr(fd, &options);
         cfmakeraw(&options);
-
-        //cfsetispeed(&options, speed ? speed : B38400);
-        //cfsetospeed(&options, speed ? speed : B38400);
 
         options.c_cflag |= (CLOCAL | CREAD);
         options.c_cflag |= CRTSCTS;
@@ -549,8 +515,6 @@ namespace caspian
         for(auto &c : fire_counts) c = 0;
         for(auto &t : last_fire_times) t = -1;
         for(auto &r : recorded_fires) r.clear();
-        //for(auto &a : monitor_aftertime) a = -1;
-        //for(auto &&p : monitor_precise) p = false;
     }
 
     bool UsbCaspian::update()

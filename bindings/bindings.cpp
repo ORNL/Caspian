@@ -6,7 +6,6 @@
 #include "network.hpp"
 #include "backend.hpp"
 #include "simulator.hpp"
-#include "spike_encoder.hpp"
 
 #include "pybind_json.hpp"
 
@@ -33,6 +32,7 @@ PYBIND11_MODULE(caspian, m) {
     bind_processor(m);
     
     /* SpikeEncoder utility class */
+    /*
     py::enum_<csp::SpikeVariable>(m, "SpikeVariable", py::arithmetic())
         .value("NumSpikes", csp::SpikeVariable::NumSpikes)
         .value("Interval", csp::SpikeVariable::Interval);
@@ -61,5 +61,6 @@ PYBIND11_MODULE(caspian, m) {
         ))
 
         .def("encode", &csp::SpikeEncoder::encode, py::arg("data"));
+    */
 
 }

@@ -71,7 +71,6 @@ HEADERS     = $(INC)/backend.hpp \
               $(INC)/constants.hpp \
 	      $(INC)/network.hpp \
 	      $(INC)/simulator.hpp \
-	      $(INC)/spike_encoder.hpp \
 	      $(INC)/ucaspian.hpp
 
 TL_HEADERS  = $(INC)/processor.hpp \
@@ -80,7 +79,6 @@ TL_HEADERS  = $(INC)/processor.hpp \
 SOURCES     = $(SRC)/backend.cpp \
 	      $(SRC)/network.cpp \
 	      $(SRC)/simulator.cpp \
-	      $(SRC)/spike_encoder.cpp \
 	      $(SRC)/ucaspian.cpp
 
 TL_SOURCES  = $(SRC)/processor.cpp \
