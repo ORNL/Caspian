@@ -55,24 +55,27 @@ namespace caspian
 
     void Simulator::process_fire(const InputFireEvent &e)
     {
-        Neuron &to = net->get_neuron(net->get_input(e.id));
-
-        // refresh the state of the neuron
-        if(to.last_event != net_time)
-            refresh_neuron(&to);
-
-        // accumulate charge
-        to.charge += e.weight;
-
-        // increment accumulations count
-        metric_accumulates++;
-
-        // check threshold
-        if(to.charge > to.threshold && !to.tcheck)
+        for(Network *n : nets)
         {
-            // add to list of elements to check
-            thresh_check.emplace_back(&to);
-            to.tcheck = true;
+            Neuron &to = n->get_neuron(n->get_input(e.id));
+
+            // refresh the state of the neuron
+            if(to.last_event != net_time)
+                refresh_neuron(&to);
+
+            // accumulate charge
+            to.charge += e.weight;
+
+            // increment accumulations count
+            metric_accumulates++;
+
+            // check threshold
+            if(to.charge > to.threshold && !to.tcheck)
+            {
+                // add to list of elements to check
+                thresh_check.emplace_back(&to);
+                to.tcheck = true;
+            }
         }
     }
 
@@ -201,6 +204,8 @@ namespace caspian
 
         // assign the network pointer
         net = n;
+        nets.clear();
+        nets.push_back(n);
 
         // extract meaningful configuration if network is not null
         if(n != nullptr)
@@ -293,7 +298,9 @@ namespace caspian
             do_cycle();
 
         // save updated time to the network
-        net->set_time(end_time);
+        for(Network *n : nets)
+            n->set_time(end_time);
+
         metric_timesteps += steps;
 
         return true;
@@ -360,8 +367,10 @@ namespace caspian
     {
         net_time = 0;
         input_fires.clear();
-        net->reset();
         thresh_check.clear();
+
+        for(Network *n : nets)
+            n->reset();
 
         // clear fire tracking information
         for(auto &a : monitor_aftertime) a = -1;
@@ -378,15 +387,13 @@ namespace caspian
     {
         net_time = 0;
         input_fires.clear();
-        net->clear_activity();
         thresh_check.clear();
+
+        for(Network *n : nets)
+            n->clear_activity();
 
         // clear fire tracking information
         for(auto &m : output_logs) m.clear();
-
-        //for(auto &&a : monitor_aftertime) a = -1;
-        //monitor_precise.clear();
-        //monitor_precise.resize(net->num_outputs(), false);
 
         for(auto &&f : fires)
             f.clear();

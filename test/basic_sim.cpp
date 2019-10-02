@@ -9,7 +9,7 @@
 
 using namespace caspian;
 
-void generate_pass(Network *net, int width, int height, int delay = 1)
+static void generate_pass(Network *net, int width, int height, int delay = 1)
 {
 
     for(int i = 0; i < height; i++)
@@ -37,7 +37,7 @@ void generate_pass(Network *net, int width, int height, int delay = 1)
     }
 }
 
-void generate_simple(Network *net, int n_thresh, int s_weight, int s_delay, int n_leak = -1, int n_delay = 0)
+static void generate_simple(Network *net, int n_thresh, int s_weight, int s_delay, int n_leak = -1, int n_delay = 0)
 {
     // input neuron
     net->add_neuron(0, 0, n_leak, n_delay);
