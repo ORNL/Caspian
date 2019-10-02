@@ -1021,7 +1021,7 @@ namespace caspian
                     to = randint(end_outputs, n_neurons-1); // find random neuron
                 } while(fr == to);
 
-                if(elements.at(to)->synapses.size() < static_cast<size_t>(n_hidden_synapses_max))
+                if(elements.at(to)->synapses.size() < size_t(n_hidden_synapses_max))
                     rand_syn(fr, to);
             }
         }

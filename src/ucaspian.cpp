@@ -549,19 +549,19 @@ namespace caspian
         return true;
     }
 
-    int UsbCaspian::get_output_count(uint32_t output_id)
+    int UsbCaspian::get_output_count(uint32_t output_id, int /*network_id*/)
     {
         if(output_id >= fire_counts.size()) return -1;
         return fire_counts[output_id];
     }
 
-    int UsbCaspian::get_last_output_time(uint32_t output_id)
+    int UsbCaspian::get_last_output_time(uint32_t output_id, int /*network_id*/)
     {
         if(output_id >= last_fire_times.size()) return -1;
         return last_fire_times[output_id];
     }
 
-    std::vector<uint32_t> UsbCaspian::get_output_values(uint32_t output_id)
+    std::vector<uint32_t> UsbCaspian::get_output_values(uint32_t output_id, int /*network_id*/)
     {
         if(output_id >= recorded_fires.size()) return std::vector<uint32_t>();
         return recorded_fires.at(output_id);

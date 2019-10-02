@@ -144,11 +144,8 @@ namespace caspian
                 // check monitor times
                 if(after_start)
                 {
-                    fire_counts[n->output_id] += 1;
-                    last_fire_times[n->output_id] = net_time - run_start_time;
-
-                    if(monitor_precise[n->output_id])
-                        recorded_fires[n->output_id].push_back(net_time - run_start_time);
+                    int tag = (multi_net_sim) ? n->tag : 0;
+                    output_logs[tag].add_fire(n->output_id, net_time - run_start_time, monitor_precise[n->output_id]);
                 }
             }
         }
@@ -194,11 +191,9 @@ namespace caspian
         thresh_check.clear();
 
         // clear fire tracking
-        fire_counts.clear();
-        last_fire_times.clear();
         monitor_aftertime.clear();
         monitor_precise.clear();
-        recorded_fires.clear();
+        output_logs.clear();
 
         // clear internal fires
         for(auto &&f : fires)
@@ -224,11 +219,9 @@ namespace caspian
                 input_map[i] = net->get_input(i);
 
             // set up output monitoring
-            fire_counts.resize(net->num_outputs(), 0);
-            last_fire_times.resize(net->num_outputs(), -1);
             monitor_aftertime.resize(net->num_outputs(), -1);
             monitor_precise.resize(net->num_outputs(), false);
-            recorded_fires.resize(net->num_outputs());
+            output_logs.emplace_back(net->num_outputs());
 
             // Get maxmimum delay from network & allocate enough schedule slots in circular buffer
             int total_max_delay = net->max_axon_delay + net->max_syn_delay;
@@ -242,7 +235,35 @@ namespace caspian
 
     bool Simulator::configure_multi(std::vector<Network*>& networks)
     {
-        return false;
+        // if we can't configure the first... there are problems
+        if(!configure(networks[0]))
+        {
+            // TODO?
+            return false;
+        }
+
+        nets = networks;
+        multi_net_sim = true;
+
+        int tag = 0;
+
+        for(Network *n : nets)
+        {
+            // Check to make sure everything makes sense
+            if(n->num_inputs() != net->num_inputs()) return false;
+            if(n->num_outputs() != net->num_outputs()) return false;
+
+            // assign a tag to the outputs for each network to correspond with internal network id
+            for(int outp = 0; outp < n->num_outputs(); outp++)
+                n->get_neuron(n->get_output(outp)).tag = tag;
+
+            tag++;
+        }
+
+        while(output_logs.size() < nets.size())
+        {
+            output_logs.emplace_back(net->num_outputs());
+        }
     }
 
     void Simulator::apply_input(int input_id, int16_t w, uint64_t t)
@@ -262,9 +283,7 @@ namespace caspian
         std::sort(input_fires.begin(), input_fires.end(), std::greater<InputFireEvent>());
 
         // clear fire tracking information
-        for(auto &&c : fire_counts) c = 0;
-        for(auto &&t : last_fire_times) t = -1;
-        for(auto &&r : recorded_fires) r.clear();
+        for(auto &m : output_logs) m.clear();
 
         run_start_time = net->get_time();
         end_time = run_start_time + steps;
@@ -345,10 +364,8 @@ namespace caspian
         thresh_check.clear();
 
         // clear fire tracking information
-        for(auto &&c : fire_counts) c = 0;
-        for(auto &&t : last_fire_times) t = -1;
-        for(auto &&a : monitor_aftertime) a = -1;
-        for(auto &&r : recorded_fires) r.clear();
+        for(auto &a : monitor_aftertime) a = -1;
+        for(auto &m : output_logs) m.clear();
 
         monitor_precise.clear();
         monitor_precise.resize(net->num_outputs(), false);
@@ -365,9 +382,7 @@ namespace caspian
         thresh_check.clear();
 
         // clear fire tracking information
-        for(auto &&c : fire_counts) c = 0;
-        for(auto &&t : last_fire_times) t = -1;
-        for(auto &&r : recorded_fires) r.clear();
+        for(auto &m : output_logs) m.clear();
 
         //for(auto &&a : monitor_aftertime) a = -1;
         //monitor_precise.clear();
@@ -391,22 +406,24 @@ namespace caspian
         return true;
     }
 
-    int Simulator::get_output_count(uint32_t output_id)
+    int Simulator::get_output_count(uint32_t output_id, int network_id)
     {
-        if(output_id >= fire_counts.size()) return -1;
-        return fire_counts[output_id];
+        if(output_id >= output_logs[network_id].fire_counts.size()) return -1;
+        return output_logs[network_id].fire_counts[output_id];
     }
 
-    int Simulator::get_last_output_time(uint32_t output_id)
+    int Simulator::get_last_output_time(uint32_t output_id, int network_id)
     {
-        if(output_id >= last_fire_times.size()) return -1;
-        return last_fire_times[output_id];
+        if(output_id >= output_logs[network_id].last_fire_times.size()) return -1;
+        return output_logs[network_id].last_fire_times[output_id];
     }
 
-    std::vector<uint32_t> Simulator::get_output_values(uint32_t output_id)
+    std::vector<uint32_t> Simulator::get_output_values(uint32_t output_id, int network_id)
     {
-        if(output_id >= recorded_fires.size()) return std::vector<uint32_t>();
-        return recorded_fires.at(output_id);
+        if(output_id >= output_logs[network_id].recorded_fires.size()) 
+            return std::vector<uint32_t>();
+
+        return output_logs[network_id].recorded_fires[output_id];
     }
 
     Simulator::Simulator()

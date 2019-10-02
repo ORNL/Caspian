@@ -102,9 +102,9 @@ namespace caspian
         bool track_timing(uint32_t output_id, bool do_tracking = true);
 
         /* Get outputs from the simulation */
-        int  get_output_count(uint32_t output_id);
-        int  get_last_output_time(uint32_t output_id);
-        std::vector<uint32_t> get_output_values(uint32_t output_id);
+        int  get_output_count(uint32_t output_id, int network_id = 0);
+        int  get_last_output_time(uint32_t output_id, int network_id = 0);
+        std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0);
     };
 
 #ifdef WITH_VERILATOR

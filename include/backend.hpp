@@ -60,12 +60,12 @@ namespace caspian
         virtual void reset() = 0;
         virtual void clear_activity() = 0;
 
-        virtual bool track_aftertime(uint32_t output_id, uint64_t aftertime);
-        virtual bool track_timing(uint32_t output_id, bool do_tracking = true);
+        virtual bool track_aftertime(uint32_t output_id, uint64_t aftertime) = 0;
+        virtual bool track_timing(uint32_t output_id, bool do_tracking = true) = 0;
 
-        virtual int  get_output_count(uint32_t output_id);
-        virtual int  get_last_output_time(uint32_t output_id);
-        virtual std::vector<uint32_t> get_output_values(uint32_t output_id);
+        virtual int  get_output_count(uint32_t output_id, int network_id = 0) = 0;
+        virtual int  get_last_output_time(uint32_t output_id, int network_id = 0) = 0;
+        virtual std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0) = 0;
 
         virtual ~Backend() = default;
     };

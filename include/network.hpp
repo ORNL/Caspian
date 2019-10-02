@@ -67,7 +67,8 @@ namespace caspian
             threshold(n.threshold),
             id(n.id),
             input_id(n.input_id),
-            output_id(n.output_id) {}
+            output_id(n.output_id),
+            tag(n.tag) {}
 
         Neuron& operator=(Neuron &&n) noexcept;
 
@@ -100,6 +101,8 @@ namespace caspian
         /* IO id */
         int        input_id = -1;
         int        output_id = -1;
+        /* meta */
+        int        tag = -1;
         
         protected:
         /* Copying is problematic because Synapse* will be invalidated, so

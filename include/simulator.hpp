@@ -4,6 +4,7 @@
 #include <utility>
 #include <queue>
 #include <fstream>
+#include <stdexcept>
 
 #include "network.hpp"
 #include "backend.hpp"
@@ -28,6 +29,39 @@ namespace caspian
 
         FireEvent& operator=(const FireEvent &e) = default;
         FireEvent& operator=(FireEvent &&e) = default;
+    };
+
+    struct OutputMonitor
+    {
+        OutputMonitor(size_t n_outputs)
+        {
+            fire_counts.resize(n_outputs);
+            last_fire_times.resize(n_outputs);
+            recorded_fires.resize(n_outputs);
+        }
+
+        void add_fire(int id, uint64_t time, bool precise=false)
+        {
+            if(id > int(fire_counts.size()))
+                throw std::range_error("[Output Monitor] Provided output id exceed configuration");
+
+            fire_counts[id] += 1;
+            last_fire_times[id] = time;
+
+            if(precise)
+                recorded_fires[id].push_back(time);
+        }
+    
+        void clear()
+        {
+            for(auto &c : fire_counts) c = 0;
+            for(auto &t : last_fire_times) t = -1;
+            for(auto &r : recorded_fires) r.clear();
+        }
+
+        std::vector<int> fire_counts;
+        std::vector<uint64_t> last_fire_times;
+        std::vector<std::vector<uint32_t>> recorded_fires;
     };
 
     /* The simluator implements the "Backend" interface. This simulator is single-threaded 
@@ -63,12 +97,15 @@ namespace caspian
         /* id -> element coordinates for inputs */
         std::vector<uint32_t> input_map;
 
-        /* output monitoring */
-        std::vector<int> fire_counts;
-        std::vector<uint64_t> last_fire_times;
+        /* output monitoring config */
         std::vector<int64_t> monitor_aftertime;
         std::vector<bool> monitor_precise;
-        std::vector<std::vector<uint32_t>> recorded_fires;
+
+        /* output monitoring data */
+        std::vector<OutputMonitor> output_logs;
+        //std::vector<int> fire_counts;
+        //std::vector<uint64_t> last_fire_times;
+        //std::vector<std::vector<uint32_t>> recorded_fires;
 
         /* circular buffer of internal fire events */
         std::vector< std::vector<FireEvent> > fires;
@@ -132,9 +169,9 @@ namespace caspian
         bool track_timing(uint32_t output_id, bool do_tracking = true);
 
         /* Get outputs from the simulation */
-        int  get_output_count(uint32_t output_id);
-        int  get_last_output_time(uint32_t output_id);
-        std::vector<uint32_t> get_output_values(uint32_t output_id);
+        int  get_output_count(uint32_t output_id, int network_id = 0);
+        int  get_last_output_time(uint32_t output_id, int network_id = 0);
+        std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0);
     };
 }
 
