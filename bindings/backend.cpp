@@ -51,6 +51,7 @@ void bind_backend(py::module &m) {
         })
 
         .def("configure", &csp::Backend::configure)
+        .def("configure_multi", &csp::Backend::configure_multi)
         .def("simulate", &csp::Backend::simulate)
         .def("update", &csp::Backend::update)
         .def("get_metric", &csp::Backend::get_metric)
@@ -59,20 +60,21 @@ void bind_backend(py::module &m) {
         .def("clear_activity", &csp::Backend::clear_activity)
         .def("track_aftertime", &csp::Backend::track_aftertime, py::arg("output_id"), py::arg("aftertime"))
         .def("track_timing", &csp::Backend::track_timing, py::arg("output_id"), py::arg("do_tracking") = true)
-        .def("get_output_count", &csp::Backend::get_output_count, py::arg("output_id"))
-        .def("get_all_output_counts", [](csp::Backend &dev, int n_outputs) {
+        .def("get_output_count", &csp::Backend::get_output_count, py::arg("output_id"), py::arg("network_id") = 0)
+        .def("get_last_output_time", &csp::Backend::get_last_output_time, py::arg("output_id"), py::arg("network_id") = 0)
+        .def("get_all_output_counts", [](csp::Backend &dev, int n_outputs, int network_id) {
             std::vector<int> outputs(n_outputs);
             for(int i = 0; i < n_outputs; ++i) {
-                outputs[i] = dev.get_output_count(i);
+                outputs[i] = dev.get_output_count(i, network_id);
             }
             return outputs;
-        })
-        .def("get_output_max_count", [](csp::Backend &dev, int n_outputs) {
+        }, py::arg("n_outputs"), py::arg("network_id") = 0)
+        .def("get_output_max_count", [](csp::Backend &dev, int n_outputs, int network_id) {
             int max_idx = 0;
             int max_val = 0;
 
             for(int i = 0; i < n_outputs; ++i) {
-                int cnt = dev.get_output_count(i);
+                int cnt = dev.get_output_count(i, network_id);
                 if(cnt > max_val) {
                     max_idx = i;
                     max_val = cnt;
@@ -80,8 +82,8 @@ void bind_backend(py::module &m) {
             }
 
             return std::make_tuple(max_idx, max_val);
-        })
-        .def("get_outputs", &csp::Backend::get_output_values, py::arg("output_id"));
+        }, py::arg("n_outputs"), py::arg("network_id") = 0)
+        .def("get_outputs", &csp::Backend::get_output_values, py::arg("output_id"), py::arg("network_id") = 0);
 
     py::class_<csp::Simulator, csp::Backend>(m, "Simulator")
         .def(py::init<>())

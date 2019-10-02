@@ -244,7 +244,7 @@ namespace caspian
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
-        return static_cast<double>(dev->get_last_output_time(output_id));
+        return static_cast<double>(dev->get_last_output_time(output_id, network_id));
     }
 
     int Processor::output_count(int output_id, int network_id)
@@ -252,7 +252,7 @@ namespace caspian
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
-        return dev->get_output_count(output_id);
+        return dev->get_output_count(output_id, network_id);
     }
 
     vector<double> Processor::output_vector(int output_id, int network_id)
@@ -260,7 +260,7 @@ namespace caspian
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
-        std::vector<uint32_t> i_times = dev->get_output_values(output_id);
+        std::vector<uint32_t> i_times = dev->get_output_values(output_id, network_id);
         return std::vector<double>(i_times.begin(), i_times.end());
     }
 
