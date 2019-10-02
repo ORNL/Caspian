@@ -69,11 +69,7 @@ namespace caspian
         neuro::PropertyPack properties;
 
         /* for single network sim */
-        int loaded_network_id;
-        neuro::Network* api_net;
-        caspian::Network* internal_net;
-
-        /* for multi-network sim */
+        bool multi_net_sim = false;
         vector<neuro::Network*> api_nets;
         vector<caspian::Network*> internal_nets;
     };

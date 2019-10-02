@@ -32,8 +32,6 @@ namespace caspian
     Processor::Processor(json& j)
     {
         dev = new Simulator();
-        api_net = nullptr;
-        internal_net = nullptr;
 
         // Default configuration
         jconfig = {
@@ -77,8 +75,10 @@ namespace caspian
         if(dev != nullptr)
             delete dev;
 
-        if(internal_net != nullptr)
-            delete internal_net;
+        for(size_t i = 0; i < internal_nets.size(); i++)
+        {
+            delete internal_nets[i];
+        }
     }
 
     neuro::PropertyPack Processor::get_properties()
@@ -88,15 +88,20 @@ namespace caspian
 
     bool Processor::load_network(neuro::Network *n, int network_id)
     {
-        // convert to internal_net
-        if(internal_net != nullptr)
-            delete internal_net;
+        multi_net_sim = false;
+        api_nets.clear();
+
+        for(size_t i = 0; i < internal_nets.size(); ++i)
+        {
+            delete internal_nets[i];
+        }
+        internal_nets.clear();
 
         // keep the pointer
-        api_net = n;
+        api_nets.push_back(n);
         
         // make a new shadow network
-        internal_net = new Network();
+        Network *internal_net = new Network();
 
         // convert to internal representation & handle the error case
         if(!network_framework_to_internal(n, internal_net))
@@ -105,9 +110,6 @@ namespace caspian
             delete internal_net;
             internal_net = nullptr;
 
-            // indicate no network is loaded
-            loaded_network_id = -1;
-
             // save error message
             //throw std::runtime_error("Error converting given network to internal representation");
 
@@ -115,8 +117,7 @@ namespace caspian
             return false;
         }
 
-        // keep track of the specified network id
-        loaded_network_id = network_id;
+        internal_nets.push_back(internal_net);
 
         // configure the device
         return dev->configure(internal_net);
@@ -124,12 +125,51 @@ namespace caspian
 
     bool Processor::load_networks(vector<neuro::Network*> &n)
     {
+        bool convert_error = false;
+
         // Enable multi-network batch mode
+        multi_net_sim = true;
+        api_nets = n;
+
+        // clear old networks
+        for(size_t i = 0; i < internal_nets.size(); ++i)
+        {
+            delete internal_nets[i];
+        }
+        internal_nets.clear();
+
+        // convert networks
+        for(size_t i = 0; i < api_nets.size(); ++i)
+        {
+            Network *internal_net = new Network();
+
+            if(!network_framework_to_internal(api_nets[i], internal_net))
+            {
+                delete internal_net;
+                convert_error = true;
+                break;
+            }
+
+            internal_nets.push_back(internal_net);
+        }
+
+        if(convert_error)
+        {
+            for(size_t i = 0; i < internal_nets.size(); ++i)
+            {
+                delete internal_nets[i];
+            }
+            internal_nets.clear();
+            api_nets.clear();
+            return false;
+        }
+
+        return dev->configure_multi(internal_nets);
     }
 
     void Processor::apply_spike(const Spike &s, int network_id)
     {
-        if(loaded_network_id != network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[apply] Specified network {} is not loaded", network_id));
 
         int16_t int_val = s.value * caspian::constants::MAX_DEVICE_INPUT;
@@ -159,7 +199,7 @@ namespace caspian
 
     void Processor::run(double duration, int network_id)
     {
-        if(loaded_network_id != network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[run] Specified network {} is not loaded", network_id));
 
         dev->simulate(duration);
@@ -174,7 +214,7 @@ namespace caspian
 
     double Processor::get_time(int network_id)
     {
-        if(loaded_network_id != network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[get_time] Specified network {} is not loaded", network_id));
 
         return dev->get_time();
@@ -182,7 +222,7 @@ namespace caspian
 
     void Processor::track_aftertime(int output_id, double aftertime, int network_id)
     {
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
         // time conversion
@@ -193,7 +233,7 @@ namespace caspian
 
     void Processor::track_output(int output_id, bool track, int network_id)
     {
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
         dev->track_timing(output_id, track);
@@ -201,7 +241,7 @@ namespace caspian
 
     double Processor::output_last_fire(int output_id, int network_id)
     {
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
         return static_cast<double>(dev->get_last_output_time(output_id));
@@ -209,7 +249,7 @@ namespace caspian
 
     int Processor::output_count(int output_id, int network_id)
     {
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
         return dev->get_output_count(output_id);
@@ -217,7 +257,7 @@ namespace caspian
 
     vector<double> Processor::output_vector(int output_id, int network_id)
     {
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
 
         std::vector<uint32_t> i_times = dev->get_output_values(output_id);
@@ -228,26 +268,26 @@ namespace caspian
     void Processor::clear(int network_id)
     {
         // TODO: network_id
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[clear] Specified network {} is not loaded", network_id));
 
-        api_net = nullptr;
+        api_nets.clear();
 
-        if(internal_net != nullptr)
+        for(size_t i = 0; i < internal_nets.size(); i++)
         {
-            delete internal_net;
-            internal_net = nullptr;
+            delete internal_nets[i];
         }
+        internal_nets.clear();
 
         dev->configure(nullptr);
-        loaded_network_id = -1;
+        multi_net_sim = false;
     }
 
     /* Clears the state of a network */
     void Processor::clear_activity(int network_id)
     {
         // TODO: network_id
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[clear_activity] Specified network {} is not loaded", network_id));
 
         dev->clear_activity();
@@ -255,10 +295,10 @@ namespace caspian
 
     caspian::Network* Processor::get_internal_network(int network_id) const
     {
-        if(network_id != loaded_network_id)
+        if(network_id > int(internal_nets.size())-1)
             return nullptr;
 
-        return internal_net;
+        return internal_nets.at(network_id);
     }
 
     caspian::Backend* Processor::get_backend() const
