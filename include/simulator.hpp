@@ -55,6 +55,21 @@ namespace caspian
         /* executes a single cycle of the simulation */
         void do_cycle();
 
+        /* stores the currently loaded network */
+        Network *net; // if only one is loaded, it is here
+        std::vector<Network*> nets; // if multiple are loaded, all are here -- first is also stored in *net
+        bool multi_net_sim = false;
+
+        /* id -> element coordinates for inputs */
+        std::vector<uint32_t> input_map;
+
+        /* output monitoring */
+        std::vector<int> fire_counts;
+        std::vector<uint64_t> last_fire_times;
+        std::vector<int64_t> monitor_aftertime;
+        std::vector<bool> monitor_precise;
+        std::vector<std::vector<uint32_t>> recorded_fires;
+
         /* circular buffer of internal fire events */
         std::vector< std::vector<FireEvent> > fires;
 
@@ -93,6 +108,7 @@ namespace caspian
 
         /* Set the network to execute */
         bool configure(Network *network);
+        bool configure_multi(std::vector<Network*>& networks);
 
         /* Simulate the network on the array for the specified timesteps */
         bool simulate(uint64_t steps);
@@ -110,6 +126,15 @@ namespace caspian
         /* Methods of resetting sim and network state */
         void reset();
         void clear_activity();
+
+        /* Track outputs */
+        bool track_aftertime(uint32_t output_id, uint64_t aftertime);
+        bool track_timing(uint32_t output_id, bool do_tracking = true);
+
+        /* Get outputs from the simulation */
+        int  get_output_count(uint32_t output_id);
+        int  get_last_output_time(uint32_t output_id);
+        std::vector<uint32_t> get_output_values(uint32_t output_id);
     };
 }
 

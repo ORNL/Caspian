@@ -23,6 +23,7 @@ namespace caspian
 
         // TODO: unique_ptr, shared_ptr, or raw pointer?
         bool load_network(neuro::Network* n, int network_id = 0);
+        bool load_networks(vector<neuro::Network*>& n);
         
         /* Apply spike(s) to a network */
         void apply_spike(const Spike& s, int network_id = 0);
@@ -67,9 +68,14 @@ namespace caspian
         json jconfig;
         neuro::PropertyPack properties;
 
+        /* for single network sim */
         int loaded_network_id;
         neuro::Network* api_net;
         caspian::Network* internal_net;
+
+        /* for multi-network sim */
+        vector<neuro::Network*> api_nets;
+        vector<caspian::Network*> internal_nets;
     };
 
 }

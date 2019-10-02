@@ -122,6 +122,11 @@ namespace caspian
         return dev->configure(internal_net);
     }
 
+    bool Processor::load_networks(vector<neuro::Network*> &n)
+    {
+        // Enable multi-network batch mode
+    }
+
     void Processor::apply_spike(const Spike &s, int network_id)
     {
         if(loaded_network_id != network_id)

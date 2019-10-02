@@ -363,6 +363,12 @@ namespace caspian
         return true;
     }
 
+    bool UsbCaspian::configure_multi(std::vector<Network*>& networks)
+    {
+        throw std::logic_error("Configure Multi is not implemented for uCaspian (yet...)");
+        return false;
+    }
+
     bool UsbCaspian::simulate(uint64_t steps)
     {
         const int send_buf_sz = 1024;
@@ -403,7 +409,7 @@ namespace caspian
                 make_steps(f.time - cur_time);
             }
 
-            make_input_fire(buf_p, f.to, f.weight);
+            make_input_fire(buf_p, net->get_input(f.id), f.weight);
             buf_p += sizeof_input_fire();
         }
 
@@ -528,6 +534,40 @@ namespace caspian
         (void) n;
         n = net;
     }
+
+    bool UsbCaspian::track_aftertime(uint32_t output_id, uint64_t aftertime)
+    {
+        if(output_id >= monitor_aftertime.size()) return false;
+        monitor_aftertime[output_id] = aftertime;
+        return true;
+    }
+    
+    bool UsbCaspian::track_timing(uint32_t output_id, bool do_tracking)
+    {
+        if(output_id >= monitor_precise.size()) return false;
+        monitor_precise[output_id] = do_tracking;
+        return true;
+    }
+
+    int UsbCaspian::get_output_count(uint32_t output_id)
+    {
+        if(output_id >= fire_counts.size()) return -1;
+        return fire_counts[output_id];
+    }
+
+    int UsbCaspian::get_last_output_time(uint32_t output_id)
+    {
+        if(output_id >= last_fire_times.size()) return -1;
+        return last_fire_times[output_id];
+    }
+
+    std::vector<uint32_t> UsbCaspian::get_output_values(uint32_t output_id)
+    {
+        if(output_id >= recorded_fires.size()) return std::vector<uint32_t>();
+        return recorded_fires.at(output_id);
+    }
+
+
 }
 
 #undef CFG_ACK

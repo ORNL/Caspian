@@ -55,7 +55,7 @@ namespace caspian
 
     void Simulator::process_fire(const InputFireEvent &e)
     {
-        Neuron &to = net->get_neuron(e.to);
+        Neuron &to = net->get_neuron(net->get_input(e.id));
 
         // refresh the state of the neuron
         if(to.last_event != net_time)
@@ -240,9 +240,14 @@ namespace caspian
         return true;
     }
 
+    bool Simulator::configure_multi(std::vector<Network*>& networks)
+    {
+        return false;
+    }
+
     void Simulator::apply_input(int input_id, int16_t w, uint64_t t)
     {
-        input_fires.emplace_back(net->get_input(input_id), w, net_time + t);
+        input_fires.emplace_back(input_id, w, net_time + t);
     }
 
     bool Simulator::simulate(uint64_t steps)
@@ -370,6 +375,38 @@ namespace caspian
 
         for(auto &&f : fires)
             f.clear();
+    }
+
+    bool Simulator::track_aftertime(uint32_t output_id, uint64_t aftertime)
+    {
+        if(output_id >= monitor_aftertime.size()) return false;
+        monitor_aftertime[output_id] = aftertime;
+        return true;
+    }
+    
+    bool Simulator::track_timing(uint32_t output_id, bool do_tracking)
+    {
+        if(output_id >= monitor_precise.size()) return false;
+        monitor_precise[output_id] = do_tracking;
+        return true;
+    }
+
+    int Simulator::get_output_count(uint32_t output_id)
+    {
+        if(output_id >= fire_counts.size()) return -1;
+        return fire_counts[output_id];
+    }
+
+    int Simulator::get_last_output_time(uint32_t output_id)
+    {
+        if(output_id >= last_fire_times.size()) return -1;
+        return last_fire_times[output_id];
+    }
+
+    std::vector<uint32_t> Simulator::get_output_values(uint32_t output_id)
+    {
+        if(output_id >= recorded_fires.size()) return std::vector<uint32_t>();
+        return recorded_fires.at(output_id);
     }
 
     Simulator::Simulator()

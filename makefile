@@ -76,8 +76,7 @@ HEADERS     = $(INC)/backend.hpp \
 TL_HEADERS  = $(INC)/processor.hpp \
               $(INC)/network_conversion.hpp
 
-SOURCES     = $(SRC)/backend.cpp \
-	      $(SRC)/network.cpp \
+SOURCES     = $(SRC)/network.cpp \
 	      $(SRC)/simulator.cpp \
 	      $(SRC)/ucaspian.cpp
 

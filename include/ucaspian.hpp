@@ -41,6 +41,19 @@ namespace caspian
         int parse_cmds(uint8_t *buf, int size);
         int parse_cmd(uint8_t *buf, int rem);
 
+        /* stores the currently loaded network */
+        Network *net;
+
+        /* id -> element coordinates for inputs */
+        std::vector<uint32_t> input_map;
+
+        /* output monitoring */
+        std::vector<int> fire_counts;
+        std::vector<uint64_t> last_fire_times;
+        std::vector<int64_t> monitor_aftertime;
+        std::vector<bool> monitor_precise;
+        std::vector<std::vector<uint32_t>> recorded_fires;
+
         /* queued fires */
         std::vector<InputFireEvent> input_fires;
 
@@ -65,6 +78,7 @@ namespace caspian
 
         /* Set the network to execute */
         bool configure(Network *network);
+        bool configure_multi(std::vector<Network*>& networks);
 
         /* Simulate the network on the array for the specified timesteps */
         bool simulate(uint64_t steps);
@@ -82,6 +96,15 @@ namespace caspian
         /* Methods of resetting sim and network state */
         void reset();
         void clear_activity();
+
+        /* Track outputs */
+        bool track_aftertime(uint32_t output_id, uint64_t aftertime);
+        bool track_timing(uint32_t output_id, bool do_tracking = true);
+
+        /* Get outputs from the simulation */
+        int  get_output_count(uint32_t output_id);
+        int  get_last_output_time(uint32_t output_id);
+        std::vector<uint32_t> get_output_values(uint32_t output_id);
     };
 
 #ifdef WITH_VERILATOR
