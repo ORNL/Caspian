@@ -41,7 +41,7 @@ namespace caspian
         /* # of delay cycles in which the synapse delays a fire */
         uint8_t  delay = 0;
         /* time of the last fire */
-        uint64_t last_fire = 0;
+        //uint64_t last_fire = 0;
     };
 
     struct Neuron
@@ -54,21 +54,21 @@ namespace caspian
          */
 
         Neuron(int16_t threshold_, uint32_t id_ = 0, int8_t leak_ = -1, uint8_t delay_ = 0) noexcept : 
-            leak(leak_),
-            delay(delay_),
+            id(id_),
             threshold(threshold_),
-            id(id_) {}
+            leak(leak_),
+            delay(delay_) {}
         
         Neuron(Neuron &&n) noexcept :
             synapses(std::move(n.synapses)),
             outputs(std::move(n.outputs)),
-            leak(n.leak),
-            delay(n.delay),
-            threshold(n.threshold),
             id(n.id),
             input_id(n.input_id),
             output_id(n.output_id),
-            tag(n.tag) {}
+            tag(n.tag),
+            threshold(n.threshold),
+            leak(n.leak),
+            delay(n.delay) {}
 
         Neuron& operator=(Neuron &&n) noexcept;
 
@@ -82,18 +82,8 @@ namespace caspian
         /* outputs */
         std::vector< std::pair<Neuron*, Synapse*> > outputs;
 
-        /* leak configuration (neuron-level granularity) -- stored as exponent 2^x */
-        int8_t     leak = -1;
-        /* # of delay cycles for the neuron/axon */
-        uint8_t    delay = 0;
-        /* Queued for threshold check in simulator */
-        bool       tcheck = false;
-        /* threshold before the neuron will fire */
-        int16_t    threshold = 0;
-        /* current stored charge from accumulated fires */
-        int32_t    charge = 0;
         /* time of last fire */
-        uint64_t   last_fire = constants::MAX_TIME;
+        //uint64_t   last_fire = constants::MAX_TIME;
         /* time of last fire event *into* this neuron */
         uint64_t   last_event = constants::MAX_TIME;
         /* Coordinates */
@@ -103,6 +93,16 @@ namespace caspian
         int        output_id = -1;
         /* meta */
         int        tag = -1;
+        /* current stored charge from accumulated fires */
+        int32_t    charge = 0;
+        /* threshold before the neuron will fire */
+        int16_t    threshold = 0;
+        /* Queued for threshold check in simulator */
+        bool       tcheck = false;
+        /* leak configuration (neuron-level granularity) -- stored as exponent 2^x */
+        int8_t     leak = -1;
+        /* # of delay cycles for the neuron/axon */
+        uint8_t    delay = 0;
         
         protected:
         /* Copying is problematic because Synapse* will be invalidated, so
@@ -110,12 +110,12 @@ namespace caspian
         Neuron(Neuron &n) noexcept : 
             synapses(n.synapses),
             outputs(n.outputs),
-            leak(n.leak),
-            delay(n.delay),
-            threshold(n.threshold),
             id(n.id),
             input_id(n.input_id),
-            output_id(n.output_id) {}
+            output_id(n.output_id),
+            threshold(n.threshold),
+            leak(n.leak),
+            delay(n.delay) {}
 
         /* Further, the assignment operator should not be used */
         Neuron& operator= (const Neuron& n) = delete;
@@ -229,14 +229,11 @@ namespace caspian
         std::vector<std::pair<uint32_t, uint32_t>>
                                 get_synapse_list() const;
 
-        /* Iterators to lists of ids */
-
-
         /* information about the configuration used with this network */
-        uint8_t                 max_syn_delay = 0; // constants::DEFAULT_MAX_DELAY;
-        uint8_t                 max_axon_delay = 0; // constants::DEFAULT_MAX_DELAY;
         uint16_t                max_thresh = constants::MAX_THRESHOLD;
         bool                    soft_reset = false;
+        uint8_t                 max_syn_delay = 0; // constants::DEFAULT_MAX_DELAY;
+        uint8_t                 max_axon_delay = 0; // constants::DEFAULT_MAX_DELAY;
 
     protected:
         /* hash table of all the neurons in the network */
@@ -260,12 +257,12 @@ namespace caspian
         /* dimensions of the 'grid' of elements */
         size_t   m_max_size = 0;
 
-        /* total number of synapses within the network */
-        int      m_num_synapses = 0;
-        
         /* current network time */
         uint64_t m_time = 0;
 
+        /* total number of synapses within the network */
+        int      m_num_synapses = 0;
+        
         friend class Simulator;
     };
 

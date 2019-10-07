@@ -91,7 +91,7 @@ namespace caspian
         metric_accumulates++;
 
         // set synapse last fired
-        e.syn->last_fire = net_time;
+        //e.syn->last_fire = net_time;
 
         // check threshold
         if(e.neuron->charge > e.neuron->threshold && !e.neuron->tcheck)
@@ -121,7 +121,7 @@ namespace caspian
             // todo: for soft_reset, if charge is still > threshold, schedule null event for t+1?
 
             // update last fired
-            n->last_fire = net_time;
+            //n->last_fire = net_time;
 
             // create a fire event for each output of the neuron
             for(std::pair<Neuron*, Synapse*> & opair : n->outputs)
@@ -269,6 +269,8 @@ namespace caspian
         {
             output_logs.emplace_back(net->num_outputs());
         }
+
+        return true;
     }
 
     void Simulator::apply_input(int input_id, int16_t w, uint64_t t)

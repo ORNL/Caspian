@@ -40,19 +40,17 @@ namespace caspian
             recorded_fires.resize(n_outputs);
         }
 
-        void add_fire(int id, uint64_t time, bool precise=false)
+        inline void add_fire(int id, uint64_t time, bool precise=false)
         {
-            if(id > int(fire_counts.size()))
-                throw std::range_error("[Output Monitor] Provided output id exceed configuration");
+            //if(id > int(fire_counts.size()))
+            //    throw std::range_error("[Output Monitor] Provided output id exceed configuration");
 
             fire_counts[id] += 1;
             last_fire_times[id] = time;
-
-            if(precise)
-                recorded_fires[id].push_back(time);
+            if(precise) recorded_fires[id].push_back(time);
         }
     
-        void clear()
+        inline void clear()
         {
             for(auto &c : fire_counts) c = 0;
             for(auto &t : last_fire_times) t = -1;
@@ -89,11 +87,6 @@ namespace caspian
         /* executes a single cycle of the simulation */
         void do_cycle();
 
-        /* stores the currently loaded network */
-        Network *net; // if only one is loaded, it is here
-        std::vector<Network*> nets; // if multiple are loaded, all are here -- first is also stored in *net
-        bool multi_net_sim = false;
-
         /* id -> element coordinates for inputs */
         std::vector<uint32_t> input_map;
 
@@ -103,9 +96,6 @@ namespace caspian
 
         /* output monitoring data */
         std::vector<OutputMonitor> output_logs;
-        //std::vector<int> fire_counts;
-        //std::vector<uint64_t> last_fire_times;
-        //std::vector<std::vector<uint32_t>> recorded_fires;
 
         /* circular buffer of internal fire events */
         std::vector< std::vector<FireEvent> > fires;
@@ -116,21 +106,26 @@ namespace caspian
         /* collection of input fires organized by time */
         std::vector<InputFireEvent> input_fires;
 
-        /* Information about the loaded network */
-        uint16_t max_delay = 1;
-        uint16_t dly_mask  = 0x1;
-        bool soft_reset = false;
+        /* stores the currently loaded network */
+        std::vector<Network*> nets; // if multiple are loaded, all are here -- first is also stored in *net
+        Network *net; // if only one is loaded, it is here
 
         /* metrics for Neuro GetMetric() */
+        uint64_t metric_timesteps = 0;
         int metric_accumulates = 0;
         int metric_fires = 0;
-        uint64_t metric_timesteps = 0;
 
         /* Network time at the start of a simulation call */
         uint64_t run_start_time = 0;
 
         /* Current network time */
         uint64_t net_time = 0;
+
+        /* Information about the loaded network */
+        uint16_t max_delay = 1;
+        uint16_t dly_mask  = 0x1;
+        bool soft_reset = false;
+        bool multi_net_sim = false;
 
         #ifdef TIMING
         std::map<std::string, int> meta;

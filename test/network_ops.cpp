@@ -1,13 +1,21 @@
+#include <vector>
+#include <algorithm>
 #include "doctest/doctest.h"
+#include "fmt/format.h"
 #include "network.hpp"
 #include "simulator.hpp"
-#include <iostream>
-#include <vector>
-#include <set>
-#include <fstream>
-#include <algorithm>
 
 using namespace caspian;
+
+TEST_CASE("Sizes")
+{
+    fmt::print("Size of:\n");
+    fmt::print(" Neuron: {}\n", sizeof(Neuron));
+    fmt::print(" Synapse: {}\n", sizeof(Synapse));
+    fmt::print(" Network: {}\n", sizeof(Network));
+    fmt::print(" Event: {}\n", sizeof(FireEvent));
+    fmt::print(" Simulator: {}\n", sizeof(Simulator));
+}
 
 TEST_CASE("Neurons may be added, retrieved, and deleted")
 {

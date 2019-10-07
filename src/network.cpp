@@ -204,13 +204,13 @@ namespace caspian
             elm.value()->tcheck = false;
 
             // reset last fire attribute
-            elm.value()->last_fire = constants::MAX_TIME;
+            //elm.value()->last_fire = constants::MAX_TIME;
             elm.value()->last_event = constants::MAX_TIME;
 
-            for(auto &&syn : elm.value()->synapses)
-            {
-                syn.second.last_fire = constants::MAX_TIME;
-            }
+            //for(auto &&syn : elm.value()->synapses)
+            //{
+            //    syn.second.last_fire = constants::MAX_TIME;
+            //}
         }
     }
 
@@ -225,7 +225,7 @@ namespace caspian
             elm.value()->tcheck = false;
 
             // reset last fire attribute
-            elm.value()->last_fire = constants::MAX_TIME;
+            //elm.value()->last_fire = constants::MAX_TIME;
             elm.value()->last_event = constants::MAX_TIME;
         }
     }
