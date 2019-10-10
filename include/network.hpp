@@ -6,7 +6,7 @@
 #include <stdexcept>
 
 #include "nlohmann/json.hpp"
-#include "hopscotch/hopscotch_map.h"
+#include "robinhood/robin_map.h"
 #include "constants.hpp"
 
 #ifdef TIMING
@@ -20,8 +20,8 @@ namespace caspian
     struct Neuron;
     class Network;
 
-    /* Hopscotch Hash Table to hold the neurons for a network */
-    typedef tsl::hopscotch_map<uint32_t, Neuron*> NeuronTable;
+    /* Robin Hood Hash Table to hold the neurons for a network */
+    typedef tsl::robin_map<uint32_t, Neuron*> NeuronTable;
 
     /* Creates a valid device configuration string */
     std::string create_device_config(int size, int inputs, int outputs);
