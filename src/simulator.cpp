@@ -259,7 +259,7 @@ namespace caspian
             if(n->num_outputs() != net->num_outputs()) return false;
 
             // assign a tag to the outputs for each network to correspond with internal network id
-            for(int outp = 0; outp < n->num_outputs(); outp++)
+            for(int outp = 0; outp < int(n->num_outputs()); outp++)
                 n->get_neuron(n->get_output(outp)).tag = tag;
 
             tag++;
@@ -324,10 +324,11 @@ namespace caspian
         return net_time;
     }
 
-    void Simulator::pull_network(Network *n) const
+    Network* Simulator::pull_network(uint32_t idx) const
     {
-        (void) n; // suppress compiler warning
-        n = net;
+        if(idx >= nets.size()) 
+            throw std::out_of_range("[pull_network] network index is greater than the loaded networks");
+        return nets[idx];
     }
 
     double Simulator::get_metric(const std::string &metric)
@@ -397,8 +398,7 @@ namespace caspian
         // clear fire tracking information
         for(auto &m : output_logs) m.clear();
 
-        for(auto &&f : fires)
-            f.clear();
+        for(auto &f : fires) f.clear();
     }
 
     bool Simulator::track_aftertime(uint32_t output_id, uint64_t aftertime)

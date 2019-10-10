@@ -86,7 +86,7 @@ namespace caspian
         return properties;
     }
 
-    bool Processor::load_network(neuro::Network *n, int network_id)
+    bool Processor::load_network(neuro::Network *n, int /* network_id */)
     {
         multi_net_sim = false;
         api_nets.clear();

@@ -153,7 +153,7 @@ namespace caspian
         uint64_t get_time() const;
 
         /* pull the updated network -- has no meaning for Simulator -- network already has state */
-        void pull_network(Network *net) const;
+        Network* pull_network(uint32_t idx) const;
 
         /* Methods of resetting sim and network state */
         void reset();

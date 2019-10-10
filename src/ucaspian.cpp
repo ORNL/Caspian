@@ -363,7 +363,7 @@ namespace caspian
         return true;
     }
 
-    bool UsbCaspian::configure_multi(std::vector<Network*>& networks)
+    bool UsbCaspian::configure_multi(std::vector<Network*>& /* networks */)
     {
         throw std::logic_error("Configure Multi is not implemented for uCaspian (yet...)");
         return false;
@@ -528,11 +528,10 @@ namespace caspian
         return true;
     }
     
-    void UsbCaspian::pull_network(Network *n) const
+    Network* UsbCaspian::pull_network(uint32_t /* idx */) const
     {
-        // Not implemented
-        (void) n;
-        n = net;
+        // TODO
+        return net;
     }
 
     bool UsbCaspian::track_aftertime(uint32_t output_id, uint64_t aftertime)

@@ -48,7 +48,7 @@ namespace caspian
     public:
         virtual bool configure(Network *network) = 0;
         virtual bool configure_multi(std::vector<Network*> &networks) = 0;
-        virtual void pull_network(Network *network) const = 0;
+        virtual Network* pull_network(uint32_t idx) const = 0;
 
         virtual void apply_input(int input_id, int16_t w, uint64_t t) = 0;
         virtual bool simulate(uint64_t steps) = 0;
