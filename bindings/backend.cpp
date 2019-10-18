@@ -50,6 +50,36 @@ void bind_backend(py::module &m) {
             }
         })
 
+        .def("apply_dvs_events", 
+        [](csp::Backend &dev,
+           const std::vector<int> x, 
+           const std::vector<int> y, 
+           const std::vector<int> p, 
+           const std::vector<double> t, 
+           std::pair<int,int> dims,
+           bool use_polarity) {
+
+            // error check
+            if(x.size() != y.size() || y.size() != t.size() || (use_polarity && t.size() != p.size())) {
+                throw std::runtime_error("[apply_dvs_events] x, y, p, and t must have matching length");
+            }
+
+            // Value: caspian::constants::MAX_DEVICE_INPUT
+            
+            uint32_t max_x, max_y;
+            std::tie(max_x, max_y) = dims;
+            uint32_t frame_size = max_x * max_y;
+
+            // Generate and immediately apply spikes
+            for(size_t i = 0; i < x.size(); ++i)
+            {
+                auto nid = y[i] * max_x + x[i];
+                if(use_polarity) nid += p[i] * frame_size;
+                dev.apply_input(nid, caspian::constants::MAX_DEVICE_INPUT, uint64_t(floor(t[i])));
+            }
+
+        }, py::arg("x"), py::arg("y"), py::arg("p"), py::arg("t"), py::arg("dims"), py::arg("use_polarity") = true)
+
         .def("configure", &csp::Backend::configure)
         .def("configure_multi", &csp::Backend::configure_multi)
         .def("simulate", &csp::Backend::simulate)
