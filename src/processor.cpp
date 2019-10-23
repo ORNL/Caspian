@@ -59,9 +59,15 @@ namespace caspian
         if(!json_chk.empty())
             throw std::runtime_error(json_chk);
 
+        if(!jconfig["Leak_Enable"].get<bool>()) 
+        {
+            jconfig["Min_Leak"] = -1;
+            jconfig["Max_Leak"] = -1;
+        }
+
         // Add neuron parameters
         properties.add_node_property("Threshold", jconfig["Min_Threshold"], jconfig["Max_Threshold"], neuro::Property::Type::INTEGER, 1);
-        properties.add_node_property("Leak_Value", jconfig["Min_Leak"], jconfig["Max_Leak"], neuro::Property::Type::INTEGER, 1);
+        properties.add_node_property("Leak", jconfig["Min_Leak"], jconfig["Max_Leak"], neuro::Property::Type::INTEGER, 1);
         properties.add_node_property("Delay", jconfig["Min_Axon_Delay"], jconfig["Max_Axon_Delay"], neuro::Property::Type::INTEGER, 1);
 
         // Add synapse parameters
