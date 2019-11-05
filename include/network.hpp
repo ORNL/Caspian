@@ -20,6 +20,21 @@ namespace caspian
     struct Neuron;
     class Network;
 
+    struct int_hash
+    {
+        size_t operator() (const uint32_t val) const
+        {
+            // From MurmurHash3
+            size_t h = val;
+            h ^= h >> 16;
+            h *= 0x85ebca6b;
+            h ^= h >> 13;
+            h *= 0xc2b2ae35;
+            h ^= h >> 16;
+            return h;
+        }
+    };
+
     /* Robin Hood Hash Table to hold the neurons for a network */
     typedef tsl::robin_map<uint32_t, Neuron*> NeuronTable;
 
@@ -127,7 +142,7 @@ namespace caspian
     {
     public:
         /* Very standard constructor */
-        Network(size_t max_size = 0) : m_max_size(max_size) {}
+        Network(size_t max_size = 0);
 
         /* Copy Constructor */
         Network(const Network &n);

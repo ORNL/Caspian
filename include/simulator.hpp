@@ -148,6 +148,7 @@ namespace caspian
 
         /* Get device metrics */
         double get_metric(const std::string &metric);
+        uint64_t get_metric_uint(const std::string &metric);
 
         /* Get the current time */
         uint64_t get_time() const;

@@ -113,10 +113,7 @@ namespace caspian
             metric_fires++;
 
             // reset charge after firing (soft reset => charge - threshold, hard reset => 0)
-            if(soft_reset) 
-                n->charge -= n->threshold;
-            else
-                n->charge = 0;
+            n->charge = (soft_reset) ? n->charge - n->threshold : 0;
 
             // todo: for soft_reset, if charge is still > threshold, schedule null event for t+1?
 
@@ -333,7 +330,12 @@ namespace caspian
 
     double Simulator::get_metric(const std::string &metric)
     {
-        double m = 0;
+        return get_metric_uint(metric);
+    }
+
+    uint64_t Simulator::get_metric_uint(const std::string &metric)
+    {
+        uint64_t m = 0;
 
         if(metric == "fire_count")
         {

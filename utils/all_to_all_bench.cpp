@@ -11,10 +11,14 @@ using namespace caspian;
 
 void run_test(int inputs, int runs, int seed, int runtime, int input_time)
 {
-    std::mt19937 gen{seed};
-    std::normal_distribution<> nd{0,1};
+    auto rand_start = std::chrono::system_clock::now();
+
     const int max_weight = 255;
     const int threshold = 127;
+    const int max_delay = 15;
+    std::mt19937 gen{seed};
+    std::normal_distribution<> nd{0,1};
+    std::uniform_int_distribution<> ud(0, max_delay);
 
     int n_neurons = inputs;
     uint64_t accumulations = 0;
@@ -23,15 +27,15 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
 
     std::vector<std::chrono::duration<double>> sim_times;
 
-    auto rand_start = std::chrono::system_clock::now();
-
     Network net(n_neurons);
 
     // Generate the network
     for(int i = 0; i < inputs; ++i)
     {
-        net.add_neuron(i, threshold);
+        // Leak with tau=4
+        net.add_neuron(i, threshold, -1); //, 4);
         net.set_input(i, i);
+        //net.set_output(i, i);
     }
 
     for(int i = 0; i < inputs; ++i)
@@ -43,7 +47,11 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
             int wd = std::round(nd(gen) * threshold);
             int w = std::max(-max_weight, std::min(max_weight, wd));
 
-            net.add_synapse(i, j, w, 0);
+            //int dd = std::round(nd(gen) * 15);
+            //int dly = std::max(0, std::min(max_delay, dd));
+            int dly = ud(gen);
+
+            net.add_synapse(i, j, w, dly);
         }
     }
     
@@ -66,7 +74,7 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
 
     for(int r = 0; r < runs; ++r)
     {
-        std::uniform_int_distribution<> dis(1, 100);
+        std::uniform_int_distribution<> dis(0, 100);
 
         auto sim_start = std::chrono::system_clock::now();
 
@@ -74,24 +82,27 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
         for(int i = 0; i < inputs; ++i)
         {
             int frate = dis(gen);
+
+            if(frate == 0) continue;
+
             for(int j = 0; j < input_time; ++j)
             {
                 if(j % frate == 0)
                 {
-                    sim.apply_input(i, 500, j);
+                    sim.apply_input(i, 512, j);
                     input_fire_cnt++;
                 }
             }
         }
 
-        // Simulate with sufficient time (intentionally extra)
+        // Simulate with specified time
         sim.simulate(runtime);
-        accumulations += sim.get_metric("accumulate_count");
-        fire_cnt += sim.get_metric("fire_count");
+        accumulations += sim.get_metric_uint("accumulate_count");
+        fire_cnt += sim.get_metric_uint("fire_count");
         auto sim_end = std::chrono::system_clock::now();
 
         std::chrono::duration<double> sim_time = sim_end - sim_start;
-        std::cout << "Simulate " << r << ": " << (sim_time).count() << " s" << std::endl;
+        fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
         sim_times.push_back(sim_time);
 
         sim.clear_activity();

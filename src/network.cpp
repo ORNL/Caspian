@@ -59,6 +59,13 @@ namespace caspian
         return j;
     }
 
+    Network::Network(size_t max_size) : m_max_size(max_size)
+    {
+        elements.reserve(m_max_size);
+        m_neuron_ids.reserve(m_max_size);
+        m_synapse_pairs.reserve(m_max_size);
+    }
+
     Network::Network(const Network &n)
     {
         m_max_size = n.m_max_size;
@@ -240,7 +247,7 @@ namespace caspian
         if(!is_neuron(nid))
         {
             elements.emplace(nid, new Neuron(thresh, nid, leak, delay));
-            m_neuron_ids.push_back(nid);
+            m_neuron_ids.emplace_back(nid);
         }
         else
         {
@@ -263,7 +270,7 @@ namespace caspian
             remove_neuron(n.id);
 
         elements.emplace(nn->id, nn);
-        m_neuron_ids.push_back(nn->id);
+        m_neuron_ids.emplace_back(nn->id);
     }
 
     void Network::add_neuron(nlohmann::json &n)
@@ -418,7 +425,7 @@ namespace caspian
             pre_n.outputs.emplace_back(&post_n, &s);
 
             // add to list of synapses
-            m_synapse_pairs.push_back(std::make_pair(from, to));
+            m_synapse_pairs.emplace_back(std::make_pair(from, to));
 
             // increment synapse count
             ++m_num_synapses;
