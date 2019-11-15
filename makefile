@@ -106,11 +106,12 @@ PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLU
 
 # Patch symbol linkage issues for Mac OS
 OS := $(shell uname)
-ifeq ($(OS),"Darwin")
-    PYBUILD_FLAGS += -undefined dynamic_lookup -flto
-else
-    PYBUILD_FLAGS += -flto=8
-endif
+PYBUILD_FLAGS += -flto
+#ifeq ($(OS),"Darwin")
+#    PYBUILD_FLAGS += -undefined dynamic_lookup -flto
+#else
+#    PYBUILD_FLAGS += -flto=8
+#endif
 
 
 BINDING_SOURCES := $(PYBINDINGS)/backend.cpp \
@@ -155,6 +156,8 @@ run_test: $(TEST_EXEC)
 ## Utilities
 UTILITIES  = $(BIN)/benchmark \
              $(BIN)/all_to_all_bench \
+	     $(BIN)/netop_bench \
+	     $(BIN)/paper_bench \
              $(BIN)/prune
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
