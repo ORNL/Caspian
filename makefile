@@ -98,21 +98,21 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
 
 #########################
 ## Python support
-
-python: $(PYLIBCASPIAN)
-
 PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) \
                  -std=c++14 -fPIC -O3 -fvisibility=hidden
 
 # Patch symbol linkage issues for Mac OS
-OS := $(shell uname)
-PYBUILD_FLAGS += -flto
-#ifeq ($(OS),"Darwin")
-#    PYBUILD_FLAGS += -undefined dynamic_lookup -flto
-#else
-#    PYBUILD_FLAGS += -flto=8
-#endif
+OS := $(shell uname -s)
 
+ifeq ($(OS),"Darwin")
+    PYBUILD_FLAGS += -undefined dynamic_lookup -flto
+else
+    PYBUILD_FLAGS += -flto
+endif
+
+PYTHON_INSTALL_USER ?= true
+
+python: $(PYLIBCASPIAN)
 
 BINDING_SOURCES := $(PYBINDINGS)/backend.cpp \
                    $(PYBINDINGS)/network.cpp \
