@@ -99,15 +99,14 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
 #########################
 ## Python support
 PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) \
-                 -std=c++14 -fPIC -O3 -fvisibility=hidden
+                 -std=c++14 -flto -fPIC -O3 -fvisibility=hidden
+PYBUILD_LFLAGS = -shared 
 
 # Patch symbol linkage issues for Mac OS
-OS := $(shell uname -s)
+OS := $(strip $(shell uname -s))
 
-ifeq ($(OS),"Darwin")
-    PYBUILD_FLAGS += -undefined dynamic_lookup -flto
-else
-    PYBUILD_FLAGS += -flto
+ifeq ($(OS),Darwin)
+    PYBUILD_LFLAGS += -undefined dynamic_lookup
 endif
 
 PYTHON_INSTALL_USER ?= true
@@ -133,7 +132,7 @@ $(PYBUILD_OBJECTS): $(PYBUILD)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROO
 	$(CXX) $(PYBUILD_FLAGS) -c $< -o $@
 
 $(PYLIBCASPIAN): $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYFRAMEWORK)
-	$(CXX) $(PYBUILD_FLAGS) -shared $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYBUILD_TL_OBJECTS) -o $@
+	$(CXX) $(PYBUILD_FLAGS) $(PYBUILD_LFLAGS) $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYBUILD_TL_OBJECTS) -o $@
 
 #########################
 ## Testing
