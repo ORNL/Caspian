@@ -135,8 +135,6 @@ namespace caspian
 
     int UsbCaspian::serial_open(const char *device, int /*rate*/)
     {
-        return -1;
-
         struct termios options;
         int fd;
 

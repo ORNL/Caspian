@@ -1,6 +1,7 @@
 #include "backend.hpp"
 #include "simulator.hpp"
 #include "constants.hpp"
+#include "ucaspian.hpp"
 #include "processor.hpp"
 #include "fmt/format.h"
 #include "utils/json_helpers.hpp"
@@ -8,6 +9,7 @@
 using json = nlohmann::json;
 
 static json specs = {
+    { "Backend",            "S" },
     { "Min_Threshold",      "I" },
     { "Max_Threshold",      "I" },
     { "Leak_Enable",        "B" },
@@ -31,10 +33,10 @@ namespace caspian
 
     Processor::Processor(json& j)
     {
-        dev = new Simulator();
 
         // Default configuration
         jconfig = {
+            { "Backend",                "Event_Simulator" },
             { "Leak_Enable",            true },
             { "Min_Leak",               0 },
             { "Max_Leak",               constants::MAX_LEAK },
@@ -52,8 +54,27 @@ namespace caspian
         if(!j.empty())
             jconfig.update(j);
 
+        if(jconfig["Backend"] == "Event_Simulator")
+        {
+            dev = new Simulator();
+        }
+        else if(jconfig["Backend"] == "uCaspian")
+        {
+            // Synaptic delay is not supported on this platform
+            jconfig["Min_Synapse_Delay"] = 0;
+            jconfig["Max_Synapse_Delay"] = 0;
+            dev = new UsbCaspian();
+        }
+        else
+        {
+            throw std::runtime_error(format("Selected backend '{}' is not supported.", jconfig["Backend"].get<string>()));
+        }
+
         // Check the configuration
         std::string json_chk = neuro::Parameter_Check_Json(jconfig, specs);
+
+        // VALIDATE the settings
+        // TODO
 
         // Cannot continue with an invalid configuration
         if(!json_chk.empty())

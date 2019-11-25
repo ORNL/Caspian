@@ -3,12 +3,14 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 
 using namespace caspian;
 
 void generate_pass(Network *net, int width, int height, int delay = 1)
 {
-    auto idx = [&width](int r, int c) {
+    auto idx = [width](int r, int c) {
         return r * width + c;
     };
 
@@ -51,8 +53,12 @@ void run_test(int w, int h, int runs, int runtime = 0)
 
     auto cfg_end = std::chrono::system_clock::now();
 
-    std::cout << "Width: " << w << " Height: " << h << " Cycles: " << 3*w + 2*h << std::endl;
-    std::cout << "Configure: " << (cfg_end - cfg_start).count() / 1000.0 << " us" << std::endl;
+    fmt::print("Width: {} Height: {} Cycles: {}\n", w, h, 3*w + 2*h);
+    fmt::print("Neurons: {} Synapses: {}\n", net->num_neurons(), net->num_synapses());
+    fmt::print("Configuration Time: {} us\n", (cfg_end - cfg_start).count() / 1000.0);
+
+    uint64_t accumulations = 0;
+    uint64_t fires = 0;
 
     for(int r = 0; r < runs; ++r)
     {
@@ -69,29 +75,39 @@ void run_test(int w, int h, int runs, int runtime = 0)
         auto sim_end = std::chrono::system_clock::now();
 
         std::chrono::duration<double> sim_time = sim_end - sim_start;
-        std::cout << "Simulate " << r << ": " << (sim_time).count() << " s" << std::endl;
+        fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
         sim_times.push_back(sim_time);
+
+        accumulations += sim->get_metric("accumulate_count");
+        fires += sim->get_metric("fire_count");
 
         sim->clear_activity();
     }
 
     std::sort(sim_times.begin(), sim_times.end());
 
-    double avg = 0;
-    for(auto const &t : sim_times) avg += t.count();
-    avg /= sim_times.size();
-    std::cout << "Average Simulate: " << avg << " s" << std::endl;
-    std::cout << "Median Simulate: " << sim_times[sim_times.size()/2].count() << " s" << std::endl;
+    double ttime = 0;
+    for(auto const &t : sim_times) ttime += t.count();
+    double avg = ttime / sim_times.size();
+
 
     auto free_start = std::chrono::system_clock::now();
     delete net;
     auto free_netend = std::chrono::system_clock::now();
     delete sim;
     auto free_end = std::chrono::system_clock::now();
+    fmt::print("Average Simulate Time: {} s\n", avg);
 
-    std::cout << "Net Free: "   << (free_netend - free_start).count() / 1000.0 << " us" << std::endl;
-    std::cout << "Sim Free: "   << (free_end - free_netend).count()   / 1000.0 << " us" << std::endl;
-    std::cout << "Total Free: " << (free_end - free_start).count()    / 1000.0 << " us" << std::endl;
+    fmt::print("Simulation Stats:\n");
+    fmt::print("  > Fires:             {}\n", fires);
+    fmt::print("  > Fires/s:           {:.2f}\n", double(fires) / ttime); 
+    fmt::print("  > Acumulations:      {}\n", accumulations);
+    fmt::print("  > Accum/s:           {:.2f}\n", double(accumulations) / ttime); 
+
+    fmt::print("Deconstruct Timings:\n");
+    fmt::print("  > Network:           {:.2f} us\n", (free_netend - free_start).count() / 1000.0);
+    fmt::print("  > Simulator:         {:.2f} us\n", (free_end - free_netend).count() / 1000.0);
+    fmt::print("  Total:               {:.2f} us\n", (free_end - free_start).count() / 1000.0);
 }
 
 int main(int argc, char **argv)
@@ -101,7 +117,11 @@ int main(int argc, char **argv)
     int runs = 3;
     int rt = 0;
 
-    if(argc < 4) std::cout << "Usage: " << argv[0] << " width height n_runs (runtime)" << std::endl;
+    if(argc < 4)
+    {
+        fmt::print("Usage: {} width height n_runs (runtime)\n", argv[0]);
+        return -1;
+    }
 
     if(argc >= 4)
     {
