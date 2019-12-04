@@ -70,7 +70,7 @@ namespace caspian
         uint64_t net_time = 0;
 
     public:
-        UsbCaspian(const std::string &dev = "/dev/ttyUSB0", int rate = 3000000, bool debug=false);
+        UsbCaspian(const std::string &dev, int rate = 3000000, bool debug=false);
         ~UsbCaspian();
 
         /* Queue fires into the array */
@@ -124,6 +124,8 @@ namespace caspian
         /* I/O fifos */
         std::unique_ptr<ByteFifo> fifo_in;
         std::unique_ptr<ByteFifo> fifo_out;
+
+        uint64_t global_steps = 0;
 
         /* Logging information */
         bool m_logging = false;

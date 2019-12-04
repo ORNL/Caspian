@@ -78,7 +78,8 @@ TL_HEADERS  = $(INC)/processor.hpp \
 
 SOURCES     = $(SRC)/network.cpp \
 	      $(SRC)/simulator.cpp \
-	      $(SRC)/ucaspian.cpp
+	      $(SRC)/ucaspian.cpp \
+	      $(SRC)/verilator_caspian.cpp
 
 TL_SOURCES  = $(SRC)/processor.cpp \
               $(SRC)/network_conversion.cpp
@@ -98,9 +99,10 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
 
 #########################
 ## Python support
-PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) \
-                 -std=c++14 -flto -fPIC -O3 -fvisibility=hidden
+PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) -std=c++14 -flto -fPIC -O3 -fvisibility=hidden
 PYBUILD_LFLAGS = -shared 
+
+PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
 
 # Patch symbol linkage issues for Mac OS
 OS := $(strip $(shell uname -s))
@@ -109,7 +111,7 @@ ifeq ($(OS),Darwin)
     PYBUILD_LFLAGS += -undefined dynamic_lookup
 endif
 
-PYTHON_INSTALL_USER ?= true
+#PYTHON_INSTALL_USER ?= true
 
 python: $(PYLIBCASPIAN)
 
@@ -125,14 +127,16 @@ PYBUILD_OBJECTS := $(patsubst $(SRC)/%.cpp,$(PYBUILD)/%.o,$(SOURCES)) \
 
 PYBUILD_TL_OBJECTS := $(wildcard $(ROOT)/$(PYBUILD)/*.o)
 
+V_OBJECTS := $(wildcard ucaspian/vout/V*.o) ucaspian/vout/verilated.o ucaspian/vout/verilated_fst_c.o
+
 $(BINDING_OBJECTS): $(PYBUILD_BINDINGS)/%.o : $(PYBINDINGS)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(PYBUILD_BINDINGS)
-	$(CXX) $(PYBUILD_FLAGS) -c $< -o $@
+	$(CXX) $(PYBUILD_FLAGS) -DWITH_VERILATOR -c $< -o $@
 
 $(PYBUILD_OBJECTS): $(PYBUILD)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(PYBUILD)
-	$(CXX) $(PYBUILD_FLAGS) -c $< -o $@
+	$(CXX) $(PYBUILD_FLAGS) -DWITH_VERILATOR -c $< -o $@
 
-$(PYLIBCASPIAN): $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYFRAMEWORK)
-	$(CXX) $(PYBUILD_FLAGS) $(PYBUILD_LFLAGS) $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYBUILD_TL_OBJECTS) -o $@
+$(PYLIBCASPIAN): $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYFRAMEWORK) $(V_OBJECTS)
+	$(CXX) $(PYBUILD_FLAGS) $(PYBUILD_LFLAGS) $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYBUILD_TL_OBJECTS) $(V_OBJECTS) -o $@
 
 #########################
 ## Testing

@@ -10,6 +10,8 @@ using json = nlohmann::json;
 
 static json specs = {
     { "Backend",            "S" },
+    { "uCaspian",           "J" },
+    { "Verilator",          "J" },
     { "Min_Threshold",      "I" },
     { "Max_Threshold",      "I" },
     { "Leak_Enable",        "B" },
@@ -37,6 +39,8 @@ namespace caspian
         // Default configuration
         jconfig = {
             { "Backend",                "Event_Simulator" },
+            { "uCaspian",               {{"Serial", "/dev/ttyUSB0"}}},
+            { "Verilator",              {{"Enable", false}, {"Debug", false}, {"Trace_File", ""}}},
             { "Leak_Enable",            true },
             { "Min_Leak",               0 },
             { "Max_Leak",               constants::MAX_LEAK },
@@ -63,7 +67,25 @@ namespace caspian
             // Synaptic delay is not supported on this platform
             jconfig["Min_Synapse_Delay"] = 0;
             jconfig["Max_Synapse_Delay"] = 0;
-            dev = new UsbCaspian();
+
+            if(jconfig["Verilator"]["Enable"])
+            {
+#ifndef WITH_VERILATOR
+                throw std::runtime_error("Caspian is not compiled with Verilator support.");
+#else
+                bool debug = j["Verilator"]["Debug"];
+                string trace_file = j["Verilator"]["Trace_File"];
+                fmt::print("Open uCaspian Verilator (trace: {})\n", trace_file);
+                dev = new VerilatorCaspian(debug, trace_file);
+#endif
+            }
+            else
+            {
+                string serial_dev = jconfig["uCaspian"]["Serial"];
+                fmt::print("Open uCaspian serial at {}\n", serial_dev);
+                dev = new UsbCaspian(serial_dev);
+            }
+
         }
         else
         {

@@ -119,6 +119,8 @@ namespace caspian
         serial_rate = rate;
         m_debug = debug;
 
+        if(dev == "verilator") return;
+
         // Open serial link
         serial_fd = serial_open(serial_dev.c_str(), serial_rate);
 
@@ -398,6 +400,7 @@ namespace caspian
         // Queue fires
         for(auto &&f : input_fires)
         {
+            // check if fire is within current time window
             if(f.time < cur_time || f.time > end_time)
             {
                 continue;

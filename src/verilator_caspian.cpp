@@ -23,7 +23,7 @@ namespace caspian
         return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
     }
 
-    VerilatorCaspian::VerilatorCaspian(bool debug, const std::string &trace)
+    VerilatorCaspian::VerilatorCaspian(bool debug, const std::string &trace) : UsbCaspian("verilator")
     {
         impl = make_unique<Vucaspian>();
 
@@ -33,6 +33,7 @@ namespace caspian
             m_trace_file = trace;
 
             // create trace object
+            Verilated::traceEverOn(true);
             fst = make_unique<VerilatedFstC>();
             impl->trace(fst.get(), 99);
             fst->open(trace.c_str());
@@ -64,6 +65,9 @@ namespace caspian
         // finish reset sequence
         step_sim(1);
         impl->reset = 0;
+
+        m_debug = debug;
+        global_steps = 0;
     }
 
     VerilatorCaspian::~VerilatorCaspian()
@@ -77,7 +81,7 @@ namespace caspian
 
     void VerilatorCaspian::step_sim(int clocks)
     {
-        int stop_step = global_steps + clocks;
+        uint64_t stop_step = global_steps + clocks;
 
         while(!Verilated::gotFinish())
         {
@@ -106,8 +110,12 @@ namespace caspian
 
     int VerilatorCaspian::rec_cmd(uint8_t *buf, int size)
     {
-        for(uint8_t *buf_p = buf; buf_p < buf+size && !fifo_out->empty(); buf_p++)
-            buf_p = fifo_out->pop();
+        int rec = 0;
+        for(uint8_t *buf_p = buf; buf_p < buf+size && !fifo_out->empty(); buf_p++) {
+            *buf_p = fifo_out->pop();
+            rec++;
+        }
+        return rec;
     }
 
     void VerilatorCaspian::send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func)
