@@ -10,6 +10,7 @@ using json = nlohmann::json;
 
 static json specs = {
     { "Backend",            "S" },
+    { "Allow_Lazy",         "B" },
     { "uCaspian",           "J" },
     { "Verilator",          "J" },
     { "Min_Threshold",      "I" },
@@ -39,6 +40,7 @@ namespace caspian
         // Default configuration
         jconfig = {
             { "Backend",                "Event_Simulator" },
+            { "Allow_Lazy",             "False" },
             { "uCaspian",               {{"Serial", "/dev/ttyUSB0"}}},
             { "Verilator",              {{"Enable", false}, {"Debug", false}, {"Trace_File", ""}}},
             { "Leak_Enable",            true },

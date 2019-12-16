@@ -129,10 +129,14 @@ namespace caspian
 
         // send commands by pushing to fifo
         // TODO
-        for(int byte = 0; byte < size; ++byte)
+        for(int byte = 0; byte < size; byte++)
         {
+            if(m_debug) fmt::print(" > PUSH {:2x}", buf[byte]);
             fifo_in->push(buf[byte]);
+            if(m_debug) fmt::print(" -- OK\n");
         }
+
+        int tries = 0;
 
         do {
             // step verilator forward
@@ -160,7 +164,16 @@ namespace caspian
                 rec_offset = 0;
             }
 
-            if(m_debug) fmt::print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, parsed_bytes, rec_offset);
+            if(m_debug)
+            {
+                fmt::print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, parsed_bytes, rec_offset);
+                tries++;
+                if(tries > 32)
+                {
+                    if(m_trace) fst->close();
+                    exit(1);
+                }
+            }
 
         } while(!cond_func());
 

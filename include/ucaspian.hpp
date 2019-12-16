@@ -15,6 +15,7 @@
 
 #include "network.hpp"
 #include "backend.hpp"
+#include "simulator.hpp"
 #include "constants.hpp"
 
 namespace caspian
@@ -48,11 +49,9 @@ namespace caspian
         std::vector<uint32_t> input_map;
 
         /* output monitoring */
-        std::vector<int> fire_counts;
-        std::vector<uint64_t> last_fire_times;
         std::vector<int64_t> monitor_aftertime;
         std::vector<bool> monitor_precise;
-        std::vector<std::vector<uint32_t>> recorded_fires;
+        std::vector<OutputMonitor> output_logs;
 
         /* queued fires */
         std::vector<InputFireEvent> input_fires;

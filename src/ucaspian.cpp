@@ -260,11 +260,14 @@ namespace caspian
 
                 if(after_start)
                 {
+                    output_logs[0].add_fire(id, net_time - run_start_time, monitor_precise[id]);
+                    /*
                     fire_counts[id] += 1;
                     last_fire_times[id] = time_diff;
 
                     if(monitor_precise[id])
                         recorded_fires[id].push_back(time_diff);
+                    */
                 }
                 
                 break;
@@ -295,11 +298,9 @@ namespace caspian
         send_and_read(cfg_buf, 2 * sizeof_clear(), [this](){ return clr_acks > 1; });
 
         // clear fire tracking information
-        fire_counts.clear();
-        last_fire_times.clear();
         monitor_aftertime.clear();
         monitor_precise.clear();
-        recorded_fires.clear();
+        output_logs.clear();
 
         if(new_net == nullptr)
         {
@@ -318,18 +319,15 @@ namespace caspian
 
         net = new_net;
 
-        fire_counts.resize(net->num_outputs(), 0);
-        last_fire_times.resize(net->num_outputs(), -1);
         monitor_aftertime.resize(net->num_outputs(), -1);
         monitor_precise.resize(net->num_outputs(), false);
-        recorded_fires.resize(net->num_outputs());
+        output_logs.emplace_back(net->num_outputs());
 
         if(m_debug)
         {
-            fmt::print("[configure] outputs: {} fire_counts: {} last_fire_times: {}", 
-                    net->num_outputs(), fire_counts.size(), last_fire_times.size());
-            fmt::print(" monitor_aftertime: {} monitor_precise: {} recorded_fires {}\n", 
-                    monitor_aftertime.size(), monitor_precise.size(), recorded_fires.size());
+            fmt::print("[configure] outputs: {} ", net->num_outputs());
+            fmt::print(" monitor_aftertime: {} monitor_precise: {} output_logs {}\n", 
+                    monitor_aftertime.size(), monitor_precise.size(), output_logs.size());
         }
 
         net_time = 0;
@@ -378,6 +376,7 @@ namespace caspian
         uint8_t *buf_p = send_buf;
         uint64_t cur_time = net_time;
 
+        run_start_time = net_time;
         exp_end_time = end_time;
 
         memset(send_buf, 0, send_buf_sz);
@@ -388,11 +387,17 @@ namespace caspian
             {
                 step_size = (steps > 255) ? 255 : steps;
                 steps -= step_size;
+
+                if(m_debug) fmt::print(" > STEP {}\n", step_size);
+
                 make_step(buf_p, step_size);
                 buf_p += sizeof_step();
                 cur_time += step_size;
             } while(steps > 0);
         };
+
+        // clear fire tracking information
+        for(auto &m : output_logs) m.clear();
 
         // First, sort our input fires
         std::sort(input_fires.begin(), input_fires.end(), std::less<InputFireEvent>());
@@ -411,6 +416,7 @@ namespace caspian
             }
 
             make_input_fire(buf_p, net->get_input(f.id), f.weight);
+            if(m_debug) fmt::print("[t={:3d}] FIRE {:3d}:{:3d}\n", cur_time, net->get_input(f.id), f.weight);
             buf_p += sizeof_input_fire();
         }
 
@@ -499,10 +505,8 @@ namespace caspian
         clr_acks = 0;
 
         // clear fire tracking information
-        for(auto &c : fire_counts) c = 0;
-        for(auto &t : last_fire_times) t = -1;
         for(auto &a : monitor_aftertime) a = -1;
-        for(auto &r : recorded_fires) r.clear();
+        for(auto &m : output_logs) m.clear();
         for(auto &&p : monitor_precise) p = false;
     }
 
@@ -519,9 +523,7 @@ namespace caspian
         input_fires.clear();
 
         // clear fire tracking informy8yation
-        for(auto &c : fire_counts) c = 0;
-        for(auto &t : last_fire_times) t = -1;
-        for(auto &r : recorded_fires) r.clear();
+        for(auto &m : output_logs) m.clear();
     }
 
     bool UsbCaspian::update()
@@ -549,24 +551,25 @@ namespace caspian
         return true;
     }
 
-    int UsbCaspian::get_output_count(uint32_t output_id, int /*network_id*/)
+    int UsbCaspian::get_output_count(uint32_t output_id, int network_id)
     {
-        if(output_id >= fire_counts.size()) return -1;
-        return fire_counts[output_id];
+        if(output_id >= output_logs[network_id].fire_counts.size()) return -1;
+        return output_logs[network_id].fire_counts[output_id];
     }
 
-    int UsbCaspian::get_last_output_time(uint32_t output_id, int /*network_id*/)
+    int UsbCaspian::get_last_output_time(uint32_t output_id, int network_id)
     {
-        if(output_id >= last_fire_times.size()) return -1;
-        return last_fire_times[output_id];
+        if(output_id >= output_logs[network_id].last_fire_times.size()) return -1;
+        return output_logs[network_id].last_fire_times[output_id];
     }
 
-    std::vector<uint32_t> UsbCaspian::get_output_values(uint32_t output_id, int /*network_id*/)
+    std::vector<uint32_t> UsbCaspian::get_output_values(uint32_t output_id, int network_id)
     {
-        if(output_id >= recorded_fires.size()) return std::vector<uint32_t>();
-        return recorded_fires.at(output_id);
-    }
+        if(output_id >= output_logs[network_id].recorded_fires.size()) 
+            return std::vector<uint32_t>();
 
+        return output_logs[network_id].recorded_fires[output_id];
+    }
 
 }
 
