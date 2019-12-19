@@ -287,10 +287,12 @@ namespace caspian
 
     bool UsbCaspian::configure(Network *new_net)
     {
-        const int cfg_buf_sz = 4096;
+        const int cfg_buf_sz = 8*1024;
         uint8_t cfg_buf[cfg_buf_sz];
         uint8_t *b_ptr = cfg_buf;
         int syn_cnt = 0;
+
+        memset(cfg_buf, 0, cfg_buf_sz);
 
         // clear configuration
         make_clear_config(cfg_buf);
@@ -334,6 +336,8 @@ namespace caspian
         cfg_acks = 0;
         clr_acks = 0;
 
+        int elms_prog = 0;
+
         // Generate configuration packets
         // TODO: handle overflow in buffer
         for(auto &&elm : (*net))
@@ -346,6 +350,7 @@ namespace caspian
             bool output_en = (n->output_id >= 0);
             make_cfg_neuron(b_ptr, n->id, n->threshold, n->delay, n->leak, output_en, n_syn_start, n_syn_cnt);
             b_ptr += sizeof_cfg_neuron();
+            elms_prog++;
 
             // add synapses
             for(const std::pair<Neuron*, Synapse*> &p : n->outputs)
@@ -353,10 +358,28 @@ namespace caspian
                 make_cfg_synapse(b_ptr, syn_cnt, p.second->weight, p.first->id);
                 syn_cnt++;
                 b_ptr += sizeof_cfg_synapse();
+                elms_prog++;
+            }
+
+            // don't allow buffers to fill up
+            if(elms_prog >= 200)
+            {
+                fmt::print("Send partial config for {} elements with {} bytes\n", elms_prog, (int)(b_ptr - cfg_buf)); 
+                send_and_read(cfg_buf, b_ptr - cfg_buf, [=](){ return cfg_acks >= elms_prog; });
+                memset(cfg_buf, 0, cfg_buf_sz);
+                b_ptr = cfg_buf;
+                elms_prog = 0;
+                cfg_acks = 0;
             }
         }
 
-        send_and_read(cfg_buf, b_ptr - cfg_buf, [this](){ return cfg_acks >= (net->num_neurons() + net->num_synapses()); });
+        //send_and_read(cfg_buf, b_ptr - cfg_buf, [this](){ return cfg_acks >= (net->num_neurons() + net->num_synapses()); });
+        if(elms_prog > 0)
+        {
+            fmt::print("Send config for {} elements with {} bytes\n", elms_prog, (int)(b_ptr - cfg_buf)); 
+            send_and_read(cfg_buf, b_ptr - cfg_buf, [=](){ return cfg_acks >= elms_prog; });
+        }
+
 
         return true;
     }
@@ -369,7 +392,7 @@ namespace caspian
 
     bool UsbCaspian::simulate(uint64_t steps)
     {
-        const int send_buf_sz = 1024;
+        const int send_buf_sz = 4096;
 
         uint64_t end_time = net_time + steps;
         uint8_t send_buf[send_buf_sz];
@@ -415,9 +438,16 @@ namespace caspian
                 make_steps(f.time - cur_time);
             }
 
-            make_input_fire(buf_p, net->get_input(f.id), f.weight);
-            if(m_debug) fmt::print("[t={:3d}] FIRE {:3d}:{:3d}\n", cur_time, net->get_input(f.id), f.weight);
+            make_input_fire(buf_p, f.id, f.weight);
+            if(m_debug) fmt::print("[t={:3d}] FIRE {:3d}:{:3d}\n", cur_time, f.id, f.weight);
             buf_p += sizeof_input_fire();
+
+            if(buf_p - send_buf >= 500)
+            {
+                send_and_read(send_buf, buf_p - send_buf, [=](){ return true; });
+                memset(send_buf, 0, send_buf_sz);
+                buf_p = send_buf;
+            }
         }
 
         if(cur_time < end_time)
@@ -425,14 +455,17 @@ namespace caspian
             make_steps(end_time - cur_time);
         }
 
-        send_and_read(send_buf, buf_p - send_buf, [this](){ return net_time >= exp_end_time; });
+        if(buf_p - send_buf > 0)
+        {
+            send_and_read(send_buf, buf_p - send_buf, [this](){ return net_time >= exp_end_time; });
+        }
 
         return true;
     }
 
     void UsbCaspian::send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func)
     {
-        const int rec_buf_sz = 4096;
+        const int rec_buf_sz = 1024;
         static uint8_t rec_buf[rec_buf_sz];
         static int rec_offset = 0;
         int wr_bytes = 0;
@@ -449,7 +482,7 @@ namespace caspian
 
             if(size != wr_bytes)
             {
-                fmt::print("Incomplete write - actual: {} expected: {}\n", size, wr_bytes);
+                fmt::print("Incomplete write - actual: {} expected: {}\n", wr_bytes, size);
             }
         }
 
@@ -501,8 +534,8 @@ namespace caspian
         send_and_read(send_buf, sizeof_clear(), [this](){ return clr_acks > 0; });
         
         net_time = 0;
-        input_fires.clear();
         clr_acks = 0;
+        input_fires.clear();
 
         // clear fire tracking information
         for(auto &a : monitor_aftertime) a = -1;
@@ -522,7 +555,7 @@ namespace caspian
         clr_acks = 0;
         input_fires.clear();
 
-        // clear fire tracking informy8yation
+        // clear fire tracking information
         for(auto &m : output_logs) m.clear();
     }
 

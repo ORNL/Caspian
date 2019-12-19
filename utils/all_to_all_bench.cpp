@@ -1,7 +1,9 @@
 #include "network.hpp"
 #include "simulator.hpp"
+#include "ucaspian.hpp"
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <chrono>
 #include <random>
 #include <fmt/format.h>
@@ -9,12 +11,12 @@
 
 using namespace caspian;
 
-void run_test(int inputs, int runs, int seed, int runtime, int input_time)
+void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int input_time)
 {
     auto rand_start = std::chrono::system_clock::now();
 
-    const int max_weight = 255;
-    const int threshold = 127;
+    const int max_weight = 127;
+    const int threshold = 100;
     const int max_delay = 15;
     std::mt19937 gen{seed};
     std::normal_distribution<> nd{0,1};
@@ -26,6 +28,7 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
     uint64_t input_fire_cnt = 0;
 
     std::vector<std::chrono::duration<double>> sim_times;
+    std::vector<long long> output_counts;
 
     Network net(n_neurons);
 
@@ -35,7 +38,7 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
         // Leak with tau=4
         net.add_neuron(i, threshold, -1); //, 4);
         net.set_input(i, i);
-        //net.set_output(i, i);
+        net.set_output(i, i);
     }
 
     for(int i = 0; i < inputs; ++i)
@@ -49,7 +52,8 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
 
             //int dd = std::round(nd(gen) * 15);
             //int dly = std::max(0, std::min(max_delay, dd));
-            int dly = ud(gen);
+            //int dly = ud(gen);
+            int dly = 0;
 
             net.add_synapse(i, j, w, dly);
         }
@@ -59,8 +63,7 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
     // Configure the simulator with the new network
     auto cfg_start = std::chrono::system_clock::now();
 
-    Simulator sim;
-    sim.configure(&net);
+    sim->configure(&net);
 
     auto cfg_end = std::chrono::system_clock::now();
 
@@ -89,23 +92,30 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
             {
                 if(j % frate == 0)
                 {
-                    sim.apply_input(i, 512, j);
+                    sim->apply_input(i, 255, j);
                     input_fire_cnt++;
                 }
             }
         }
 
         // Simulate with specified time
-        sim.simulate(runtime);
-        accumulations += sim.get_metric_uint("accumulate_count");
-        fire_cnt += sim.get_metric_uint("fire_count");
+        sim->simulate(runtime);
+        accumulations += sim->get_metric("accumulate_count");
+        fire_cnt += sim->get_metric("fire_count");
+
+        int cnts = 0;
+        for(int i = 0; i < inputs; ++i) cnts += sim->get_output_count(i);
+        output_counts.push_back(cnts);
+
+        //accumulations += sim->get_metric_uint("accumulate_count");
+        //fire_cnt += sim->get_metric_uint("fire_count");
         auto sim_end = std::chrono::system_clock::now();
 
         std::chrono::duration<double> sim_time = sim_end - sim_start;
         fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
         sim_times.push_back(sim_time);
 
-        sim.clear_activity();
+        sim->clear_activity();
     }
 
     std::sort(sim_times.begin(), sim_times.end());
@@ -113,6 +123,8 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
     double avg = 0;
     for(auto const &t : sim_times) avg += t.count();
     avg /= sim_times.size();
+
+    long long ocnts = std::accumulate(output_counts.begin(), output_counts.end(), 0);
 
     double avg_input_fires = static_cast<double>(input_fire_cnt) / static_cast<double>(runs);
     double avg_fires = static_cast<double>(fire_cnt) / static_cast<double>(runs);
@@ -128,33 +140,63 @@ void run_test(int inputs, int runs, int seed, int runtime, int input_time)
     fmt::print("Accumulations per second : {:.1f}\n", avg_accum / avg);
     fmt::print("Accumulations per step   : {:.1f}\n", avg_accum / runtime);
     fmt::print("Effective Clock Speed    : {:.4f} KHz\n", (static_cast<double>(runtime) / avg) / (1000) );
+    fmt::print("Output Counts:           : {:12d}\n", ocnts);
 }
 
 int main(int argc, char **argv)
 {
+    std::string backend;
     int inputs, runs, rt, seed, input_time;
 
-    if(argc < 5)
+    if(argc < 6)
     {
-        fmt::print("Usage: {} inputs n_runs runtime seed (input_time)\n", argv[0]);
+        fmt::print("Usage: {} backend inputs n_runs runtime seed (input_time)\n", argv[0]);
         exit(1);
     }
 
-    inputs = atoi(argv[1]);
-    runs = atoi(argv[2]);
-    rt = atoi(argv[3]);
-    seed = atoi(argv[4]);
+    backend = argv[1];
+    inputs = atoi(argv[2]);
+    runs = atoi(argv[3]);
+    rt = atoi(argv[4]);
+    seed = atoi(argv[5]);
 
-    if(argc > 5)
+    if(argc > 6)
     {
-        input_time = atoi(argv[5]);
+        input_time = atoi(argv[6]);
     }
     else
     {
         input_time = rt;
     }
 
-    run_test(inputs, runs, seed, rt, input_time);
+    Backend *sim = nullptr;
+
+    if(backend == "sim")
+    {
+        fmt::print("Using Simulator backend\n");
+        sim = new Simulator();
+    }
+    else if(backend == "ucaspian")
+    {
+        fmt::print("Using uCaspian backend\n");
+        sim = new UsbCaspian("/dev/ttyUSB0");
+    }
+#ifdef WITH_VERILATOR
+    else if(backend == "verilator")
+    {
+        fmt::print("Using uCaspian Verilator backend");
+        sim = new VerilatorCaspian(false);
+    }
+#endif
+    else
+    {
+        fmt::print("Backend options: sim, ucaspian\n");
+        return 0;
+    }
+
+    run_test(sim, inputs, runs, seed, rt, input_time);
+
+    delete sim;
     return 0;
 }
 

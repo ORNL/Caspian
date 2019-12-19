@@ -1,5 +1,6 @@
 #include "network.hpp"
 #include "simulator.hpp"
+#include "ucaspian.hpp"
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -8,7 +9,7 @@
 
 using namespace caspian;
 
-void generate_pass(Network *net, int width, int height, int delay = 1)
+void generate_pass(Network *net, int width, int height, int delay = 0)
 {
     auto idx = [width](int r, int c) {
         return r * width + c;
@@ -21,7 +22,7 @@ void generate_pass(Network *net, int width, int height, int delay = 1)
             net->add_neuron(idx(row,col), 1, 0);
             if(col != 0)
             {
-                net->add_synapse(idx(row, col-1), idx(row,col), 128, delay);
+                net->add_synapse(idx(row, col-1), idx(row,col), 127, delay);
             }
 
             if(col == 0)
@@ -36,10 +37,10 @@ void generate_pass(Network *net, int width, int height, int delay = 1)
     }
 }
 
-void run_test(int w, int h, int runs, int runtime = 0)
+void run_test(Backend *sim, int w, int h, int runs, int runtime = 0)
 {
     // Create simulator
-    Simulator *sim = new Simulator();
+    //Simulator *sim = new Simulator();
     Network *net = new Network(w*h);
 
     std::vector<std::chrono::duration<double>> sim_times;
@@ -53,7 +54,8 @@ void run_test(int w, int h, int runs, int runtime = 0)
 
     auto cfg_end = std::chrono::system_clock::now();
 
-    fmt::print("Width: {} Height: {} Cycles: {}\n", w, h, 3*w + 2*h);
+    int cycles = (runtime == 0) ? 3*w + 2*h : runtime;
+    fmt::print("Width: {} Height: {} Cycles: {}\n", w, h, cycles);
     fmt::print("Neurons: {} Synapses: {}\n", net->num_neurons(), net->num_synapses());
     fmt::print("Configuration Time: {} us\n", (cfg_end - cfg_start).count() / 1000.0);
 
@@ -70,7 +72,6 @@ void run_test(int w, int h, int runs, int runtime = 0)
         }
 
         // Simulate with sufficient time (intentionally extra)
-        int cycles = (runtime == 0) ? 3*w + 2*h : runtime;
         sim->simulate(cycles);
         auto sim_end = std::chrono::system_clock::now();
 
@@ -112,30 +113,51 @@ void run_test(int w, int h, int runs, int runtime = 0)
 
 int main(int argc, char **argv)
 {
+    std::string backend;
     int w = 2000;
     int h = 2000;
     int runs = 3;
     int rt = 0;
 
-    if(argc < 4)
+    if(argc < 5)
     {
-        fmt::print("Usage: {} width height n_runs (runtime)\n", argv[0]);
+        fmt::print("Usage: {} backend width height n_runs (runtime)\n", argv[0]);
         return -1;
-    }
-
-    if(argc >= 4)
-    {
-        w = atoi(argv[1]);
-        h = atoi(argv[2]);
-        runs = atoi(argv[3]);
     }
 
     if(argc >= 5)
     {
-        rt = atoi(argv[4]);
+        backend = argv[1];
+        w = atoi(argv[2]);
+        h = atoi(argv[3]);
+        runs = atoi(argv[4]);
     }
 
-    run_test(w, h, runs, rt);
+    if(argc >= 6)
+    {
+        rt = atoi(argv[5]);
+    }
+
+    Backend *sim = nullptr;
+
+    if(backend == "sim")
+    {
+        fmt::print("Using Simulator backend\n");
+        sim = new Simulator();
+    }
+    else if(backend == "ucaspian")
+    {
+        fmt::print("Using uCaspian backend\n");
+        sim = new UsbCaspian("/dev/ttyUSB0");
+    }
+    else
+    {
+        fmt::print("Backend options: sim, ucaspian\n");
+        return 0;
+    }
+
+    run_test(sim, w, h, runs, rt);
+
     return 0;
 }
 

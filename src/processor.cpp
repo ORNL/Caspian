@@ -40,7 +40,7 @@ namespace caspian
         // Default configuration
         jconfig = {
             { "Backend",                "Event_Simulator" },
-            { "Allow_Lazy",             "False" },
+            { "Allow_Lazy",             false },
             { "uCaspian",               {{"Serial", "/dev/ttyUSB0"}}},
             { "Verilator",              {{"Enable", false}, {"Debug", false}, {"Trace_File", ""}}},
             { "Leak_Enable",            true },

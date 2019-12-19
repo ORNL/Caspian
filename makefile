@@ -37,8 +37,10 @@ PROJECT_DIR := $(dir $(MKFILE_PATH))
 
 # Compilation Flags
 CFLAGS ?= -Wall -Wextra -pipe -O3
-CFLAGSBASE = $(CFLAGS) -std=c++11 -I$(INC) -I$(ROOT_INCLUDE)
+CFLAGSBASE = $(CFLAGS) -std=c++11 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
 LFLAGS = -lpthread
+
+CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
 
 ## Targets
 .PHONY: all clean test run_test python utils
@@ -87,14 +89,16 @@ TL_SOURCES  = $(SRC)/processor.cpp \
 OBJECTS    := $(patsubst $(SRC)/%.cpp,$(OBJ)/%.o,$(SOURCES))
 TL_OBJECTS := $(patsubst $(SRC)/%.cpp,$(OBJ)/%.o,$(TL_SOURCES))
 
+V_OBJECTS := $(wildcard ucaspian/vout/V*.o) ucaspian/vout/verilated.o ucaspian/vout/verilated_fst_c.o
+
 $(OBJECTS): $(OBJ)/%.o : $(SRC)/%.cpp $(HEADERS) | $(OBJ)
 	$(CXX) $(CFLAGSBASE) -c $< -o $@
 
 $(TL_OBJECTS): $(OBJ)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(OBJ)
 	$(CXX) $(CFLAGSBASE) -c $< -o $@
 
-$(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) | $(LIB)
-	$(AR) r $@ $^
+$(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) $(V_OBJECTS) | $(LIB)
+	$(AR) r $@ $^ 
 	$(RANLIB) $@
 
 #########################
@@ -127,8 +131,6 @@ PYBUILD_OBJECTS := $(patsubst $(SRC)/%.cpp,$(PYBUILD)/%.o,$(SOURCES)) \
 
 PYBUILD_TL_OBJECTS := $(wildcard $(ROOT)/$(PYBUILD)/*.o)
 
-V_OBJECTS := $(wildcard ucaspian/vout/V*.o) ucaspian/vout/verilated.o ucaspian/vout/verilated_fst_c.o
-
 $(BINDING_OBJECTS): $(PYBUILD_BINDINGS)/%.o : $(PYBINDINGS)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(PYBUILD_BINDINGS)
 	$(CXX) $(PYBUILD_FLAGS) -DWITH_VERILATOR -c $< -o $@
 
@@ -148,7 +150,7 @@ $(TEST_OBJ): $(OBJ)/%.o : $(TST)/%.cpp $(HEADERS) $(TL_HEADERS) | $(OBJ)
 	$(CXX) $(CFLAGSBASE) -c $< -o $@
 
 $(TEST_EXEC): $(TEST_OBJ) $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
-	$(CXX) $(CFLAGSBASE) $(TEST_OBJ) -o $(TEST_EXEC) $(LIBCASPIAN) $(LIBFRAMEWORK)
+	$(CXX) $(CFLAGSBASE) $(TEST_OBJ) -o $(TEST_EXEC) $(LIBCASPIAN) $(LIBFRAMEWORK) -lz
 
 test: $(TEST_EXEC)
 
@@ -164,7 +166,7 @@ UTILITIES  = $(BIN)/benchmark \
              $(BIN)/prune
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
-	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK)
+	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) -lz
 
 utils: $(UTILITIES)
 
