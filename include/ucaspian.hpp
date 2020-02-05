@@ -60,8 +60,7 @@ namespace caspian
         bool m_debug = false;
         unsigned int clr_acks = 0;
         unsigned int cfg_acks = 0;
-        unsigned int lst_metric_addr = 0;
-        unsigned int lst_metric_value = 0;
+        std::vector<std::pair<uint8_t,uint8_t>> rec_metrics;
 
         /* Network state */
         uint64_t run_start_time = 0;

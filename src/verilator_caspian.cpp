@@ -141,7 +141,7 @@ namespace caspian
         do {
             // step verilator forward
             // TODO: how many clocks should it do?
-            step_sim(1000);
+            step_sim(250);
 
             // zero buffer
             memset(rec_buf + rec_offset, 0, rec_buf_sz - rec_offset);

@@ -52,6 +52,14 @@ namespace caspian
     inline constexpr int sizeof_cfg_synapse()    { return 5; }
     // TODO inline constexpr int sizeof_cfg_synapse_multi(int cnt) { return 5 + 2*cnt; }
     
+    static const std::map<std::string, std::vector<uint8_t>> metric_addrs = {
+        { "fire_count",         {1, 2} },
+        { "accumulate_count",   {3, 4} },
+        { "depress_count",      {} },
+        { "potentiate_count",   {} },
+        { "total_timesteps",    {} }
+    };
+    
     inline void print_hex(uint8_t *buf, int size)
     {
         for(uint8_t *bp = buf; bp < buf + size; bp += 2)
@@ -195,6 +203,7 @@ namespace caspian
         uint64_t t = 0;
         int64_t time_diff;
         bool after_start;
+        uint8_t metric_addr, metric_value;
 
         switch(buf[0])
         {
@@ -212,8 +221,9 @@ namespace caspian
                     return 0;
                 }
 
-                lst_metric_addr = buf[1];
-                lst_metric_value = buf[2];
+                metric_addr = buf[1];
+                metric_value = buf[2];
+                rec_metrics.emplace_back(metric_addr, metric_value);
                 incr = 3;
                 break;
 
@@ -519,10 +529,42 @@ namespace caspian
         return net_time;
     }
 
-    double UsbCaspian::get_metric(const std::string & /*metric*/)
+    double UsbCaspian::get_metric(const std::string& metric)
     {
-        // TODO
-        return 0;
+        auto mit = metric_addrs.find(metric);
+        if(mit == metric_addrs.end() || mit->second.empty())
+        {
+            fmt::print("Metric '{}' is not implemented for uCaspian.\n", metric);
+            return 0;
+        }
+
+        int metric_bytes = mit->second.size();
+        int send_size = metric_bytes * sizeof_get_metric();
+        uint8_t *buf = new uint8_t[send_size];
+        uint8_t *buf_p = buf;
+        rec_metrics.clear();
+
+        for(auto addr = mit->second.begin(); addr != mit->second.end(); addr++)
+        {
+            fmt::print("Get metric addr: {}\n", *addr);
+            make_get_metric(buf_p, *addr);
+            buf_p++;
+        }
+
+        send_and_read(buf, send_size, [=](){ return rec_metrics.size() >= metric_bytes; });
+
+        int64_t val = 0;
+
+        for(auto metric : rec_metrics)
+        {
+            fmt::print("Addr: {} Value: {}\n", metric.first, metric.second);
+            val = val << 8;
+            val |= metric.second;
+        }
+
+        rec_metrics.clear();
+
+        return val;
     }
 
     void UsbCaspian::reset()
