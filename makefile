@@ -38,7 +38,7 @@ PROJECT_DIR := $(dir $(MKFILE_PATH))
 # Compilation Flags
 CFLAGS ?= -Wall -Wextra -pipe -O3
 CFLAGSBASE = $(CFLAGS) -std=c++11 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
-LFLAGS = -lpthread -lz
+LFLAGS = -lpthread -lz -lftdi1
 
 CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
 
@@ -138,7 +138,7 @@ $(PYBUILD_OBJECTS): $(PYBUILD)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROO
 	$(CXX) $(PYBUILD_FLAGS) -DWITH_VERILATOR -c $< -o $@
 
 $(PYLIBCASPIAN): $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYFRAMEWORK) $(V_OBJECTS)
-	$(CXX) $(PYBUILD_FLAGS) $(PYBUILD_LFLAGS) $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYBUILD_TL_OBJECTS) $(V_OBJECTS) -o $@
+	$(CXX) $(PYBUILD_FLAGS) $(PYBUILD_LFLAGS) $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYBUILD_TL_OBJECTS) $(V_OBJECTS) -o $@ -lftdi1
 
 #########################
 ## Testing

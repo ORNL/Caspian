@@ -5,6 +5,7 @@
 #include <queue>
 #include <fstream>
 #include <memory>
+#include <libftdi1/ftdi.h>
 
 #ifdef WITH_VERILATOR
 #include "Vucaspian.h"
@@ -25,15 +26,10 @@ namespace caspian
     class UsbCaspian : public Backend
     {
     private:
-        /* serial send/rec */
-        int serial_open(const char *device, int rate);
         int send_cmd(uint8_t *buf, int size);
         int rec_cmd(uint8_t *buf, int size);
 
-        /* Serial information */
-        int serial_fd;
-        int serial_rate;
-        std::string serial_dev;
+        struct ftdi_context *ftdi;
 
     protected:
         virtual void send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func);

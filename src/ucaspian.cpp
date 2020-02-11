@@ -4,36 +4,13 @@
 #include <cstring>
 #include <stdexcept>
 #include <thread>
-
-#include <unistd.h>
-#include <termios.h>
-#include <fcntl.h>
-#include <err.h>
-#include <sys/ioctl.h>
+#include <libftdi1/ftdi.h>
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
 #include "ucaspian.hpp"
 #include "network.hpp"
 #include "constants.hpp"
-
-
-/* serial functions */
-#ifdef NOT_DEFINED
-static int rate_to_constant(int baudrate) 
-{
-#define B(x) case x: return B##x
-    switch(baudrate) {
-        B(50);     B(75);     B(110);    B(134);    B(150);
-        B(200);    B(300);    B(600);    B(1200);   B(1800);
-        B(2400);   B(4800);   B(9600);   B(19200);  B(38400);
-        B(57600);  B(115200); B(230400); B(460800); B(500000); 
-        B(576000); B(921600); B(1000000);B(1152000);B(1500000);
-        default: return 0;
-    }
-#undef B
-}
-#endif
 
 #define OUTPUT_FIRE (128)
 #define CFG_ACK     (112)
@@ -125,58 +102,40 @@ namespace caspian
 
     UsbCaspian::UsbCaspian(const std::string &dev, int rate, bool debug)
     {
-        serial_dev = dev;
-        serial_rate = rate;
-        m_debug = debug;
+        int ret;
 
-        if(dev == "verilator") return;
-
-        // Open serial link
-        serial_fd = serial_open(serial_dev.c_str(), serial_rate);
-
-        if(serial_fd < 0)
+        // create ftdi context struct (c library)
+        if((ftdi = ftdi_new()) == 0)
         {
-            throw std::runtime_error("Cannot open serial device");
+            throw std::runtime_error("Could not create libftdi context");
         }
+
+        // attempt to open the device with the given vendor/device id
+        if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6014)) < 0)
+        {
+            const char *ftdi_err = ftdi_get_error_string(ftdi);
+            std::string err = fmt::format("libftdi usb open error: {}", ftdi_err); 
+            ftdi_free(ftdi);
+            throw std::runtime_error(err);
+        }
+
+        // set latency timer
+        ftdi_set_latency_timer(ftdi, 1);
     }
 
     UsbCaspian::~UsbCaspian()
     {
-        close(serial_fd);
-    }
-
-    int UsbCaspian::serial_open(const char *device, int /*rate*/)
-    {
-        struct termios options;
-        int fd;
-
-        /* Open and configure serial port */
-        if ((fd = open(device, O_RDWR | O_NOCTTY)) == -1)
-            return -1;
-
-        fcntl(fd, F_SETFL, 0);
-
-        memset(&options, 0, sizeof(struct termios));
-        tcgetattr(fd, &options);
-        cfmakeraw(&options);
-
-        options.c_cflag |= (CLOCAL | CREAD);
-        options.c_cflag |= CRTSCTS;
-
-        if (tcsetattr(fd, TCSANOW, &options) != 0)
-            return -1;
-
-        return fd;
+        if(ftdi != nullptr) ftdi_free(ftdi);
     }
 
     int UsbCaspian::send_cmd(uint8_t *buf, int size)
     {
-        return write(serial_fd, buf, size);
+        return ftdi_write_data(ftdi, buf, size);
     }
 
     int UsbCaspian::rec_cmd(uint8_t *buf, int size)
     {
-        return read(serial_fd, buf, size);
+        return ftdi_read_data(ftdi, buf, size);
     }
 
     int UsbCaspian::parse_cmds(uint8_t *buf, int size)
@@ -496,8 +455,16 @@ namespace caspian
         int exp_proc_bytes = 0;
 
         bool send_debug = m_debug;
-        int fd = serial_fd;
 
+        // async send
+        struct ftdi_transfer_control *send_req = ftdi_write_data_submit(ftdi, buf, size);
+
+        if(send_req == NULL)
+        {
+            throw std::runtime_error("FTDI write failed");
+        }
+
+        /*
         // send commands
         std::thread send_thread([buf, size, fd, send_debug]() {
             int wr_bytes = 0;
@@ -515,6 +482,7 @@ namespace caspian
                 }
             }
         });
+        */
 
         do {
             // zero buffer
@@ -542,9 +510,11 @@ namespace caspian
 
         } while(!cond_func());
 
+        /*
         if(m_debug) fmt::print("Wait for send thread to join...");
         send_thread.join();
         if(m_debug) fmt::print(" ... joined.\n");
+        */
     }
 
     uint64_t UsbCaspian::get_time() const
