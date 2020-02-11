@@ -18,6 +18,8 @@ void bind_backend(py::module &m) {
             py::arg("input_id"), py::arg("charge"), py::arg("t")
         )
 
+        .def("set_debug", &csp::Backend::set_debug)
+
         /* This uses the native python object rather than converting because
          * conversion from py::list -> std::vector is a copying operation */
         .def("apply_inputs", [](csp::Backend &dev, py::list l) {

@@ -67,6 +67,8 @@ namespace caspian
         virtual int  get_last_output_time(uint32_t output_id, int network_id = 0) = 0;
         virtual std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0) = 0;
 
+        virtual void set_debug(bool debug) = 0;
+
         virtual ~Backend() = default;
     };
 

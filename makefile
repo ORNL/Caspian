@@ -38,7 +38,7 @@ PROJECT_DIR := $(dir $(MKFILE_PATH))
 # Compilation Flags
 CFLAGS ?= -Wall -Wextra -pipe -O3
 CFLAGSBASE = $(CFLAGS) -std=c++11 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
-LFLAGS = -lpthread
+LFLAGS = -lpthread -lz
 
 CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
 
@@ -103,7 +103,7 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) $(V_OBJECTS) | $(LIB)
 
 #########################
 ## Python support
-PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) -std=c++14 -flto -fPIC -O3 -fvisibility=hidden
+PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) -std=c++14 -flto=4 -fPIC -O3 -fvisibility=hidden
 PYBUILD_LFLAGS = -shared 
 
 PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
@@ -150,7 +150,7 @@ $(TEST_OBJ): $(OBJ)/%.o : $(TST)/%.cpp $(HEADERS) $(TL_HEADERS) | $(OBJ)
 	$(CXX) $(CFLAGSBASE) -c $< -o $@
 
 $(TEST_EXEC): $(TEST_OBJ) $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
-	$(CXX) $(CFLAGSBASE) $(TEST_OBJ) -o $(TEST_EXEC) $(LIBCASPIAN) $(LIBFRAMEWORK) -lz
+	$(CXX) $(CFLAGSBASE) $(TEST_OBJ) -o $(TEST_EXEC) $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)
 
 test: $(TEST_EXEC)
 
@@ -166,7 +166,7 @@ UTILITIES  = $(BIN)/benchmark \
              $(BIN)/prune
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
-	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) -lz
+	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)
 
 utils: $(UTILITIES)
 

@@ -447,6 +447,11 @@ namespace caspian
         return output_logs[network_id].recorded_fires[output_id];
     }
 
+    void Simulator::set_debug(bool /*debug*/)
+    {
+        // TODO: add later
+    }
+
     Simulator::Simulator()
     {
         // empty after deleting old code
