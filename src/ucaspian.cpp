@@ -4,7 +4,6 @@
 #include <cstring>
 #include <stdexcept>
 #include <thread>
-#include <libftdi1/ftdi.h>
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
@@ -49,20 +48,18 @@ namespace caspian
 
     inline void make_input_fire(std::vector<uint8_t>& buf, uint8_t id, uint8_t val)
     {
-        buf.push_back((1 << 7) | id);
-        buf.push_back(val);
+        uint8_t op = (1 << 7) | id;
+        buf.insert(buf.end(), {op, val});
     }
 
     inline void make_step(std::vector<uint8_t>& buf, uint8_t steps)
     {
-        buf.push_back(1);
-        buf.push_back(steps);
+        buf.insert(buf.end(), {1, steps});
     }
 
     inline void make_get_metric(std::vector<uint8_t>& buf, uint8_t addr)
     {
-        buf.push_back(2);
-        buf.push_back(addr);
+        buf.insert(buf.end(), {2, addr});
     }
 
     inline void make_clear_activity(std::vector<uint8_t>& buf)
@@ -80,29 +77,26 @@ namespace caspian
     {
         uint8_t enc_leak = leak + 1;
         uint8_t out_flag = (output) ? (1 << 3) : 0;
+        uint8_t dly_and_flg = ((delay & 0x0F) << 4) | out_flag | (enc_leak);
+        uint8_t syn_0 = (syn_start >> 8) & 0x0F;
+        uint8_t syn_1 = syn_start & 0x0F;
 
-        buf.push_back(16);
-        buf.push_back(addr);
-        buf.push_back(threshold);
-        buf.push_back(((delay & 0x0F) << 4) | out_flag | (enc_leak));
-        buf.push_back((syn_start >> 8) & 0x0F);
-        buf.push_back((syn_start & 0x00FF));
-        buf.push_back(syn_cnt);
+        buf.insert(buf.end(), {16, addr, threshold, dly_and_flg, syn_0, syn_1, syn_cnt});
     }
 
-    //inline void make_cfg_synapse(uint8_t *buf, uint16_t addr, int8_t weight, uint8_t target)
     inline void make_cfg_synapse(std::vector<uint8_t>& buf, uint16_t addr, int8_t weight, uint8_t target)
     {
-        buf.push_back(32);
-        buf.push_back((addr >> 8) & 0x0F);
-        buf.push_back((addr & 0x00FF));
-        buf.push_back(weight);
-        buf.push_back(target);
+        uint8_t addr_0 = (addr >> 8) & 0x0F;
+        uint8_t addr_1 = addr & 0x00FF;
+
+        buf.insert(buf.end(), {32, addr_0, addr_1, weight, target});
     }
 
-    UsbCaspian::UsbCaspian(const std::string &dev, int rate, bool debug)
+    UsbCaspian::UsbCaspian(bool debug)
     {
         int ret;
+
+        set_debug(debug);
 
         // create ftdi context struct (c library)
         if((ftdi = ftdi_new()) == 0)
@@ -227,7 +221,7 @@ namespace caspian
                 time_diff = net_time - run_start_time;
                 after_start = (time_diff >= monitor_aftertime[id]);
 
-                if(m_debug) fmt::print("[t={}] Fire at {} -- output id {}\n", net_time, addr, id);
+                debug_print("[t={}] Fire at {} -- output id {}\n", net_time, addr, id);
 
                 if(after_start)
                 {
@@ -259,22 +253,17 @@ namespace caspian
     bool UsbCaspian::configure(Network *new_net)
     {
         std::vector<uint8_t> cfg_buf;
-        //const int cfg_buf_sz = 8*1024;
-        //uint8_t cfg_buf[cfg_buf_sz];
-        //uint8_t *b_ptr = cfg_buf;
         int syn_cnt = 0;
 
-        //memset(cfg_buf, 0, cfg_buf_sz);
-        
         // make some no-ops
         for(int i = 0; i < 32; i++) cfg_buf.push_back(0);
 
         // clear configuration
         make_clear_config(cfg_buf);
         make_clear_activity(cfg_buf);
-        if(m_debug) fmt::print("Preparing to send clear config, clear activity...");
+        debug_print("Preparing to send clear config, clear activity...");
         send_and_read(cfg_buf.data(), cfg_buf.size(), [this](){ return clr_acks > 1; });
-        if(m_debug) fmt::print(" Clear ack'd\n");
+        debug_print(" Clear ack'd\n");
         cfg_buf.clear();
 
         // clear fire tracking information
@@ -303,12 +292,9 @@ namespace caspian
         monitor_precise.resize(net->num_outputs(), false);
         output_logs.emplace_back(net->num_outputs());
 
-        if(m_debug)
-        {
-            fmt::print("[configure] outputs: {} ", net->num_outputs());
-            fmt::print(" monitor_aftertime: {} monitor_precise: {} output_logs {}\n", 
-                    monitor_aftertime.size(), monitor_precise.size(), output_logs.size());
-        }
+        debug_print("[configure] outputs: {} ", net->num_outputs());
+        debug_print(" monitor_aftertime: {} monitor_precise: {} output_logs {}\n", 
+                monitor_aftertime.size(), monitor_precise.size(), output_logs.size());
 
         net_time = 0;
         cfg_acks = 0;
@@ -338,19 +324,6 @@ namespace caspian
                 //b_ptr += sizeof_cfg_synapse();
                 elms_prog++;
             }
-
-            /*
-            // don't allow buffers to fill up
-            if(elms_prog >= 200)
-            {
-                fmt::print("Send partial config for {} elements with {} bytes\n", elms_prog, cfg_buf.size()); 
-                send_and_read(cfg_buf.data(), cfg_buf.size(), [=](){ return cfg_acks >= elms_prog; });
-                //memset(cfg_buf, 0, cfg_buf_sz);
-                //b_ptr = cfg_buf;
-                elms_prog = 0;
-                cfg_acks = 0;
-            }
-            */
         }
 
         //send_and_read(cfg_buf, b_ptr - cfg_buf, [this](){ return cfg_acks >= (net->num_neurons() + net->num_synapses()); });
@@ -391,7 +364,7 @@ namespace caspian
                 step_size = (steps > 255) ? 255 : steps;
                 steps -= step_size;
 
-                if(m_debug) fmt::print(" > STEP {}\n", step_size);
+                debug_print(" > STEP {}\n", step_size);
 
                 make_step(send_buf, step_size);
                 //buf_p += sizeof_step();
@@ -419,7 +392,7 @@ namespace caspian
             }
 
             make_input_fire(send_buf, f.id, f.weight);
-            if(m_debug) fmt::print("[t={:3d}] FIRE {:3d}:{:3d}\n", cur_time, f.id, f.weight);
+            debug_print("[t={:3d}] FIRE {:3d}:{:3d}\n", cur_time, f.id, f.weight);
             //buf_p += sizeof_input_fire();
 
             /*
@@ -464,26 +437,6 @@ namespace caspian
             throw std::runtime_error("FTDI write failed");
         }
 
-        /*
-        // send commands
-        std::thread send_thread([buf, size, fd, send_debug]() {
-            int wr_bytes = 0;
-
-            if(size > 0)
-            {
-                if(send_debug) fmt::print("Attempt send of {} bytes\n", size);
-                //wr_bytes = send_cmd(buf, size);
-                wr_bytes = write(fd, buf, size);
-                if(send_debug) fmt::print("Sent {} bytes\n", wr_bytes);
-
-                if(size != wr_bytes)
-                {
-                    fmt::print("Incomplete write - actual: {} expected: {}\n", wr_bytes, size);
-                }
-            }
-        });
-        */
-
         do {
             // zero buffer
             memset(rec_buf + rec_offset, 0, rec_buf_sz - rec_offset);
@@ -506,15 +459,9 @@ namespace caspian
                 rec_offset = 0;
             }
 
-            if(m_debug) fmt::print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, processed, rec_offset);
+            debug_print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, processed, rec_offset);
 
         } while(!cond_func());
-
-        /*
-        if(m_debug) fmt::print("Wait for send thread to join...");
-        send_thread.join();
-        if(m_debug) fmt::print(" ... joined.\n");
-        */
     }
 
     uint64_t UsbCaspian::get_time() const
@@ -532,9 +479,6 @@ namespace caspian
         }
 
         int metric_bytes = mit->second.size();
-        int send_size = metric_bytes * sizeof_get_metric();
-        //uint8_t *buf = new uint8_t[send_size];
-        //uint8_t *buf_p = buf;
         std::vector<uint8_t> buf;
         rec_metrics.clear();
 
@@ -542,7 +486,6 @@ namespace caspian
         {
             fmt::print("Get metric addr: {}\n", *addr);
             make_get_metric(buf, *addr);
-            //buf_p++;
         }
 
         send_and_read(buf.data(), buf.size(), [=](){ return rec_metrics.size() >= metric_bytes; });

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <memory>
 #include <libftdi1/ftdi.h>
+#include "fmt/format.h"
 
 #ifdef WITH_VERILATOR
 #include "Vucaspian.h"
@@ -38,6 +39,12 @@ namespace caspian
         int parse_cmds(uint8_t *buf, int size);
         int parse_cmd(uint8_t *buf, int rem);
 
+        template<class ...Args>
+        void debug_print(Args&&... args) 
+        { 
+            if(m_debug) fmt::print(std::forward<Args>(args)...);
+        }
+
         /* stores the currently loaded network */
         Network *net;
 
@@ -64,7 +71,7 @@ namespace caspian
         uint64_t net_time = 0;
 
     public:
-        UsbCaspian(const std::string &dev, int rate = 3000000, bool debug=false);
+        UsbCaspian(bool debug=false);
         ~UsbCaspian();
 
         /* Queue fires into the array */

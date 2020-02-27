@@ -41,7 +41,7 @@ namespace caspian
         jconfig = {
             { "Backend",                "Event_Simulator" },
             { "Allow_Lazy",             false },
-            { "uCaspian",               {{"Serial", "/dev/ttyUSB0"}}},
+            { "uCaspian",               {{"Debug", false}}},
             { "Verilator",              {{"Enable", false}, {"Debug", false}, {"Trace_File", ""}}},
             { "Leak_Enable",            true },
             { "Min_Leak",               0 },
@@ -83,9 +83,9 @@ namespace caspian
             }
             else
             {
-                string serial_dev = jconfig["uCaspian"]["Serial"];
-                fmt::print("Open uCaspian serial at {}\n", serial_dev);
-                dev = new UsbCaspian(serial_dev);
+                bool debug = j["uCaspian"]["Debug"];
+                fmt::print("Open uCaspian device\n");
+                dev = new UsbCaspian(debug);
             }
 
         }
