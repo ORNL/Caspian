@@ -66,7 +66,7 @@ namespace caspian
             // accumulate charge
             to.charge += e.weight;
 
-            //fmt::print("[t={:3d}] Neuron {:2d} charge: {:4d} after accumulating {:4d}\n", net_time, to.id, to.charge, e.weight);
+            debug_print("[t={:3d}] Neuron {:2d} charge: {:4d} after accumulating {:4d}\n", net_time, to.id, to.charge, e.weight);
 
             // increment accumulations count
             metric_accumulates++;
@@ -89,7 +89,7 @@ namespace caspian
         // accumulate charge
         e.neuron->charge += e.syn->weight;
 
-        //fmt::print("[t={:3d}] Neuron {:2d} charge: {:4d} after accumulating {:4d}\n", net_time, e.neuron->id, e.neuron->charge, e.syn->weight);
+        debug_print("[t={:3d}] Neuron {:2d} charge: {:4d} after accumulating {:4d}\n", net_time, e.neuron->id, e.neuron->charge, e.syn->weight);
 
         // increment accumulations count
         metric_accumulates++;
@@ -116,7 +116,7 @@ namespace caspian
             // increment count of fires
             metric_fires++;
 
-            //fmt::print("[t={:3d}] > FIRE {:2d} at charge {:4d} - ", net_time, n->id, n->charge);
+            debug_print("[t={:3d}] > FIRE {:2d} at charge {:4d} - ", net_time, n->id, n->charge);
 
             // reset charge after firing (soft reset => charge - threshold, hard reset => 0)
             n->charge = (soft_reset) ? n->charge - n->threshold : 0;
@@ -152,11 +152,11 @@ namespace caspian
                 {
                     int tag = (multi_net_sim) ? n->tag : 0;
                     output_logs[tag].add_fire(n->output_id, net_time - run_start_time + 1, monitor_precise[n->output_id]);
-                    //fmt::print("output at t={:3d}", net_time - run_start_time + 1);
+                    debug_print("output at t={:3d}", net_time - run_start_time + 1);
                 }
             }
 
-            //fmt::print("\n");
+            debug_print("\n");
         }
     }
 
@@ -447,14 +447,14 @@ namespace caspian
         return output_logs[network_id].recorded_fires[output_id];
     }
 
-    void Simulator::set_debug(bool /*debug*/)
+    void Simulator::set_debug(bool debug)
     {
-        // TODO: add later
+        m_debug = debug;
     }
 
-    Simulator::Simulator()
+    Simulator::Simulator(bool debug)
     {
-        // empty after deleting old code
+        m_debug = debug;
     }
 }
 

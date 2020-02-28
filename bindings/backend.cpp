@@ -118,7 +118,7 @@ void bind_backend(py::module &m) {
         .def("get_outputs", &csp::Backend::get_output_values, py::arg("output_id"), py::arg("network_id") = 0);
 
     py::class_<csp::Simulator, csp::Backend>(m, "Simulator")
-        .def(py::init<>())
+        .def(py::init<bool>(), py::arg("debug") = false)
         
         .def("spike_data", [](csp::Simulator &sim) {
             std::vector<int> times, ids;
@@ -137,7 +137,7 @@ void bind_backend(py::module &m) {
         });
 
     py::class_<csp::UsbCaspian, csp::Backend>(m, "UsbCaspian")
-        .def(py::init<std::string, int, bool>(), py::arg("dev") = "/dev/ttyUSB0", py::arg("buad") = 3000000, py::arg("debug") = false)
+        .def(py::init<bool>(), py::arg("debug") = false)
 
         .def("clear_config", [](csp::UsbCaspian &sim) {
             return sim.configure(nullptr);

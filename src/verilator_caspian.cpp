@@ -23,7 +23,7 @@ namespace caspian
         return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
     }
 
-    VerilatorCaspian::VerilatorCaspian(bool debug, const std::string &trace) : UsbCaspian("verilator")
+    VerilatorCaspian::VerilatorCaspian(bool debug, const std::string &trace) : UsbCaspian(debug, "verilator")
     {
         impl = make_unique<Vucaspian>();
 
@@ -66,7 +66,6 @@ namespace caspian
         step_sim(1);
         impl->reset = 0;
 
-        m_debug = debug;
         global_steps = 0;
     }
 
@@ -89,15 +88,12 @@ namespace caspian
             {
                 if(m_trace) fst->dump(2*global_steps+c);
 
+                // toggle the clock
                 impl->sys_clk = !impl->sys_clk;
 
+                fifo_in->eval(impl->sys_clk, impl->reset);
                 impl->eval();
-
-                if(!impl->reset && impl->sys_clk)
-                {
-                    fifo_in->eval();
-                    fifo_out->eval();
-                }
+                fifo_out->eval(impl->sys_clk, impl->reset);
             }
 
             // increment step counter
@@ -131,17 +127,18 @@ namespace caspian
         // TODO
         for(int byte = 0; byte < size; byte++)
         {
-            if(m_debug) fmt::print(" > PUSH {:2x}", buf[byte]);
+            debug_print(" > PUSH {:2x}", buf[byte]);
             fifo_in->push(buf[byte]);
-            if(m_debug) fmt::print(" -- OK\n");
+            debug_print(" -- OK\n");
         }
+        debug_print("fifo_in: {} fifo_out: {}\n", fifo_in->size(), fifo_out->size());
 
         int tries = 0;
 
         do {
             // step verilator forward
             // TODO: how many clocks should it do?
-            step_sim(250);
+            step_sim(1000);
 
             // zero buffer
             memset(rec_buf + rec_offset, 0, rec_buf_sz - rec_offset);
@@ -156,7 +153,7 @@ namespace caspian
             // determine if there are leftover bits to keep for next parse
             if(parsed_bytes != exp_proc_bytes)
             {
-                rec_offset = (exp_proc_bytes - parsed_bytes);
+                rec_offset = exp_proc_bytes - parsed_bytes;
                 memcpy(rec_buf, rec_buf + parsed_bytes, rec_offset);
             }
             else
@@ -166,12 +163,13 @@ namespace caspian
 
             if(m_debug)
             {
-                fmt::print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, parsed_bytes, rec_offset);
+                fmt::print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, parsed_bytes, rec_offset); 
+                fmt::print("fifo_in: {} fifo_out: {}\n", fifo_in->size(), fifo_out->size());
                 tries++;
                 if(tries > 32)
                 {
                     if(m_trace) fst->close();
-                    exit(1);
+                    throw std::runtime_error(" > No data output from the processor");
                 }
             }
 

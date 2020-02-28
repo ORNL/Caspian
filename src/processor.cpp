@@ -10,8 +10,8 @@ using json = nlohmann::json;
 
 static json specs = {
     { "Backend",            "S" },
+    { "Debug",              "B" },
     { "Allow_Lazy",         "B" },
-    { "uCaspian",           "J" },
     { "Verilator",          "J" },
     { "Min_Threshold",      "I" },
     { "Max_Threshold",      "I" },
@@ -36,13 +36,12 @@ namespace caspian
 
     Processor::Processor(json& j)
     {
-
         // Default configuration
         jconfig = {
             { "Backend",                "Event_Simulator" },
+            { "Debug",                  false },
             { "Allow_Lazy",             false },
-            { "uCaspian",               {{"Debug", false}}},
-            { "Verilator",              {{"Enable", false}, {"Debug", false}, {"Trace_File", ""}}},
+            { "Verilator",              {{"Trace_File", ""}}},
             { "Leak_Enable",            true },
             { "Min_Leak",               0 },
             { "Max_Leak",               constants::MAX_LEAK },
@@ -58,37 +57,46 @@ namespace caspian
 
         // Apply updates from provided configuration
         if(!j.empty())
+        {
             jconfig.update(j);
+        }
+
+        bool debug = j["Debug"];
 
         if(jconfig["Backend"] == "Event_Simulator")
         {
-            dev = new Simulator();
+            dev = new Simulator(debug);
         }
-        else if(jconfig["Backend"] == "uCaspian")
+        else if(jconfig["Backend"] == "uCaspian_USB")
         {
             // Synaptic delay is not supported on this platform
             jconfig["Min_Synapse_Delay"] = 0;
             jconfig["Max_Synapse_Delay"] = 0;
 
-            if(jconfig["Verilator"]["Enable"])
+            fmt::print("Open uCaspian device\n");
+            dev = new UsbCaspian(debug);
+        }
+#ifdef WITH_VERILATOR
+        else if(jconfig["Backend"] == "uCaspian_Verilator")
+        {
+            // Synaptic delay is not supported on this platform
+            jconfig["Min_Synapse_Delay"] = 0;
+            jconfig["Max_Synapse_Delay"] = 0;
+
+            string trace_file = "";
+
+            if(j.contains("Verilator") && j["Verilator"].contains("Trace_File"))
             {
-#ifndef WITH_VERILATOR
-                throw std::runtime_error("Caspian is not compiled with Verilator support.");
-#else
-                bool debug = j["Verilator"]["Debug"];
-                string trace_file = j["Verilator"]["Trace_File"];
-                fmt::print("Open uCaspian Verilator (trace: {})\n", trace_file);
-                dev = new VerilatorCaspian(debug, trace_file);
-#endif
-            }
-            else
-            {
-                bool debug = j["uCaspian"]["Debug"];
-                fmt::print("Open uCaspian device\n");
-                dev = new UsbCaspian(debug);
+                trace_file = j["Verilator"]["Trace_File"];
             }
 
+            fmt::print("Open uCaspian Verilator", trace_file);
+            if(debug) fmt::print(" (trace: {})", trace_file);
+            fmt::print("\n");
+
+            dev = new VerilatorCaspian(debug, trace_file);
         }
+#endif
         else
         {
             throw std::runtime_error(format("Selected backend '{}' is not supported.", jconfig["Backend"].get<string>()));
@@ -111,13 +119,33 @@ namespace caspian
         }
 
         // Add neuron parameters
-        properties.add_node_property("Threshold", jconfig["Min_Threshold"], jconfig["Max_Threshold"], neuro::Property::Type::INTEGER, 1);
-        properties.add_node_property("Leak", jconfig["Min_Leak"], jconfig["Max_Leak"], neuro::Property::Type::INTEGER, 1);
-        properties.add_node_property("Delay", jconfig["Min_Axon_Delay"], jconfig["Max_Axon_Delay"], neuro::Property::Type::INTEGER, 1);
+        properties.add_node_property("Threshold", 
+                jconfig["Min_Threshold"], 
+                jconfig["Max_Threshold"], 
+                neuro::Property::Type::INTEGER, 
+                1);
+        properties.add_node_property("Leak", 
+                jconfig["Min_Leak"], 
+                jconfig["Max_Leak"], 
+                neuro::Property::Type::INTEGER, 
+                1);
+        properties.add_node_property("Delay", 
+                jconfig["Min_Axon_Delay"], 
+                jconfig["Max_Axon_Delay"], 
+                neuro::Property::Type::INTEGER, 
+                1);
 
         // Add synapse parameters
-        properties.add_edge_property("Weight",  jconfig["Min_Weight"], jconfig["Max_Weight"], neuro::Property::Type::INTEGER, 1);
-        properties.add_edge_property("Delay", jconfig["Min_Synapse_Delay"], jconfig["Max_Synapse_Delay"], neuro::Property::Type::INTEGER, 1);
+        properties.add_edge_property("Weight",
+                jconfig["Min_Weight"],
+                jconfig["Max_Weight"], 
+                neuro::Property::Type::INTEGER, 
+                1);
+        properties.add_edge_property("Delay", 
+                jconfig["Min_Synapse_Delay"], 
+                jconfig["Max_Synapse_Delay"], 
+                neuro::Property::Type::INTEGER, 
+                1);
     }
 
     Processor::~Processor()

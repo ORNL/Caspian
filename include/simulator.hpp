@@ -5,6 +5,7 @@
 #include <queue>
 #include <fstream>
 #include <stdexcept>
+#include "fmt/format.h"
 
 #include "network.hpp"
 #include "backend.hpp"
@@ -42,8 +43,8 @@ namespace caspian
 
         inline void add_fire(int id, uint64_t time, bool precise=false)
         {
-            //if(id > int(fire_counts.size()))
-            //    throw std::range_error("[Output Monitor] Provided output id exceed configuration");
+            if(id > int(fire_counts.size()))
+                throw std::range_error(fmt::format("[Output Monitor] Provided output id {} exceed configuration ({})", id, fire_counts.size()));
 
             fire_counts[id] += 1;
             last_fire_times[id] = time;
@@ -87,6 +88,12 @@ namespace caspian
         /* executes a single cycle of the simulation */
         void do_cycle();
 
+        template<typename... Args>
+        void debug_print(Args... args)
+        {
+            if(m_debug) fmt::print(std::forward<Args>(args)...);
+        }
+
         /* id -> element coordinates for inputs */
         std::vector<uint32_t> input_map;
 
@@ -127,12 +134,14 @@ namespace caspian
         bool soft_reset = false;
         bool multi_net_sim = false;
 
+        bool m_debug = false;
+
         #ifdef TIMING
         std::map<std::string, int> meta;
         #endif
 
     public:
-        Simulator();
+        Simulator(bool debug = false);
         ~Simulator() = default;
 
         /* Queue fires into the array */

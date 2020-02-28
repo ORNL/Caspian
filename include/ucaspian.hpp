@@ -71,7 +71,7 @@ namespace caspian
         uint64_t net_time = 0;
 
     public:
-        UsbCaspian(bool debug=false);
+        UsbCaspian(bool debug=false, std::string device = "");
         ~UsbCaspian();
 
         /* Queue fires into the array */

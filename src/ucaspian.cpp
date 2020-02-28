@@ -89,32 +89,40 @@ namespace caspian
         uint8_t addr_0 = (addr >> 8) & 0x0F;
         uint8_t addr_1 = addr & 0x00FF;
 
-        buf.insert(buf.end(), {32, addr_0, addr_1, weight, target});
+        buf.insert(buf.end(), {32, addr_0, addr_1, static_cast<uint8_t>(weight), target});
     }
 
-    UsbCaspian::UsbCaspian(bool debug)
+    UsbCaspian::UsbCaspian(bool debug, std::string device)
     {
         int ret;
 
         set_debug(debug);
 
-        // create ftdi context struct (c library)
-        if((ftdi = ftdi_new()) == 0)
+        // TODO: interpret device string
+        if(device != "verilator")
         {
-            throw std::runtime_error("Could not create libftdi context");
-        }
+            // create ftdi context struct (c library)
+            if((ftdi = ftdi_new()) == 0)
+            {
+                throw std::runtime_error("Could not create libftdi context");
+            }
 
-        // attempt to open the device with the given vendor/device id
-        if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6014)) < 0)
+            // attempt to open the device with the given vendor/device id
+            if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6014)) < 0)
+            {
+                const char *ftdi_err = ftdi_get_error_string(ftdi);
+                std::string err = fmt::format("libftdi usb open error: {}", ftdi_err); 
+                ftdi_free(ftdi);
+                throw std::runtime_error(err);
+            }
+
+            // set latency timer
+            ftdi_set_latency_timer(ftdi, 1);
+        }
+        else
         {
-            const char *ftdi_err = ftdi_get_error_string(ftdi);
-            std::string err = fmt::format("libftdi usb open error: {}", ftdi_err); 
-            ftdi_free(ftdi);
-            throw std::runtime_error(err);
+            ftdi = nullptr;
         }
-
-        // set latency timer
-        ftdi_set_latency_timer(ftdi, 1);
     }
 
     UsbCaspian::~UsbCaspian()
@@ -226,13 +234,6 @@ namespace caspian
                 if(after_start)
                 {
                     output_logs[0].add_fire(id, net_time - run_start_time, monitor_precise[id]);
-                    /*
-                    fire_counts[id] += 1;
-                    last_fire_times[id] = time_diff;
-
-                    if(monitor_precise[id])
-                        recorded_fires[id].push_back(time_diff);
-                    */
                 }
                 
                 break;
@@ -300,7 +301,7 @@ namespace caspian
         cfg_acks = 0;
         clr_acks = 0;
 
-        int elms_prog = 0;
+        unsigned int elms_prog = 0;
 
         // Generate configuration packets
         // TODO: handle overflow in buffer
@@ -313,7 +314,6 @@ namespace caspian
             int n_syn_cnt = n->outputs.size();
             bool output_en = (n->output_id >= 0);
             make_cfg_neuron(cfg_buf, n->id, n->threshold, n->delay, n->leak, output_en, n_syn_start, n_syn_cnt);
-            //b_ptr += sizeof_cfg_neuron();
             elms_prog++;
 
             // add synapses
@@ -321,18 +321,15 @@ namespace caspian
             {
                 make_cfg_synapse(cfg_buf, syn_cnt, p.second->weight, p.first->id);
                 syn_cnt++;
-                //b_ptr += sizeof_cfg_synapse();
                 elms_prog++;
             }
         }
 
-        //send_and_read(cfg_buf, b_ptr - cfg_buf, [this](){ return cfg_acks >= (net->num_neurons() + net->num_synapses()); });
         if(elms_prog > 0)
         {
             fmt::print("Send config for {} elements with {} bytes\n", elms_prog, cfg_buf.size()); 
             send_and_read(cfg_buf.data(), cfg_buf.size(), [=](){ return cfg_acks >= elms_prog; });
         }
-
 
         return true;
     }
@@ -345,17 +342,12 @@ namespace caspian
 
     bool UsbCaspian::simulate(uint64_t steps)
     {
-        //const int send_buf_sz = 4096;
-        //uint8_t send_buf[send_buf_sz];
-        //uint8_t *buf_p = send_buf;
         std::vector<uint8_t> send_buf;
         uint64_t end_time = net_time + steps;
         uint64_t cur_time = net_time;
 
         run_start_time = net_time;
         exp_end_time = end_time;
-
-        //memset(send_buf, 0, send_buf_sz);
 
         auto make_steps = [&](int steps){
             int step_size = 0;
@@ -367,7 +359,6 @@ namespace caspian
                 debug_print(" > STEP {}\n", step_size);
 
                 make_step(send_buf, step_size);
-                //buf_p += sizeof_step();
                 cur_time += step_size;
             } while(steps > 0);
         };
@@ -393,16 +384,6 @@ namespace caspian
 
             make_input_fire(send_buf, f.id, f.weight);
             debug_print("[t={:3d}] FIRE {:3d}:{:3d}\n", cur_time, f.id, f.weight);
-            //buf_p += sizeof_input_fire();
-
-            /*
-            if(buf_p - send_buf >= 500)
-            {
-                send_and_read(send_buf, buf_p - send_buf, [=](){ return true; });
-                memset(send_buf, 0, send_buf_sz);
-                buf_p = send_buf;
-            }
-            */
         }
 
         if(cur_time < end_time)
@@ -426,8 +407,6 @@ namespace caspian
         int processed = 0;
         int rec_bytes = 0;
         int exp_proc_bytes = 0;
-
-        bool send_debug = m_debug;
 
         // async send
         struct ftdi_transfer_control *send_req = ftdi_write_data_submit(ftdi, buf, size);
@@ -478,7 +457,7 @@ namespace caspian
             return 0;
         }
 
-        int metric_bytes = mit->second.size();
+        unsigned int metric_bytes = mit->second.size();
         std::vector<uint8_t> buf;
         rec_metrics.clear();
 
@@ -506,7 +485,6 @@ namespace caspian
 
     void UsbCaspian::reset()
     {
-        //uint8_t send_buf[sizeof_clear()];
         std::vector<uint8_t> send_buf;
         make_clear_activity(send_buf);
         clr_acks = 0;
@@ -525,7 +503,6 @@ namespace caspian
 
     void UsbCaspian::clear_activity()
     {
-        //uint8_t send_buf[sizeof_clear()];
         std::vector<uint8_t> send_buf;
         make_clear_activity(send_buf);
         clr_acks = 0;
