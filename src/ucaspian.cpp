@@ -108,7 +108,7 @@ namespace caspian
             }
 
             // attempt to open the device with the given vendor/device id
-            if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6014)) < 0)
+            if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6010)) < 0)
             {
                 const char *ftdi_err = ftdi_get_error_string(ftdi);
                 std::string err = fmt::format("libftdi usb open error: {}", ftdi_err); 
