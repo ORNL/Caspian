@@ -130,6 +130,7 @@ namespace caspian
         if(ftdi != nullptr) ftdi_free(ftdi);
     }
 
+    /*
     int UsbCaspian::send_cmd(uint8_t *buf, int size)
     {
         return ftdi_write_data(ftdi, buf, size);
@@ -139,26 +140,41 @@ namespace caspian
     {
         return ftdi_read_data(ftdi, buf, size);
     }
+    */
 
-    int UsbCaspian::parse_cmds(uint8_t *buf, int size)
+    int UsbCaspian::send_cmd(const std::vector<uint8_t> &buf)
     {
-        uint8_t *bufp;
-        int incr = 1;
-        int tincr = 0;
-        int rem = size;
-
-        for(bufp = buf; bufp < buf + size; bufp += incr)
-        {
-            rem = size - tincr;
-            incr = parse_cmd(bufp, rem);
-            if(incr == 0) break;
-            tincr += incr;
-        }
-
-        return tincr;
+        return ftdi_write_data(ftdi, buf.data(), buf.size());
     }
 
-    int UsbCaspian::parse_cmd(uint8_t *buf, int rem)
+    std::vector<uint8_t> UsbCaspian::rec_cmd(int max_size)
+    {
+        if(max_size > 8192) throw std::logic_error("Cannot get more than 8k in one command");
+
+        uint8_t buf[8192];
+        int bytes = ftdi_read_data(ftdi, buf, max_size);
+        return std::vector<uint8_t>(buf, buf+bytes);
+    }
+
+    int UsbCaspian::parse_cmds(const std::vector<uint8_t> &buf)
+    {
+        debug_print("Enter parse_cmds -- buf size: {}\n", buf.size());
+        int offset = 0;
+
+        while(offset < buf.size())
+        {
+            int rem = buf.size() - offset;
+            debug_print(" > Rem: {}", rem);
+            int inc = parse_cmd(buf.data()+offset, rem);
+            debug_print(" Inc: {}\n", inc);
+            offset += inc;
+            if(inc == 0) break;
+        }
+
+        return offset;
+    }
+
+    int UsbCaspian::parse_cmd(const uint8_t *buf, int rem)
     {
         int incr = 1;
         int addr;
@@ -263,7 +279,8 @@ namespace caspian
         make_clear_config(cfg_buf);
         make_clear_activity(cfg_buf);
         debug_print("Preparing to send clear config, clear activity...");
-        send_and_read(cfg_buf.data(), cfg_buf.size(), [this](){ return clr_acks > 1; });
+        send_and_read(cfg_buf, [this](){ return clr_acks > 1; });
+        //send_and_read(cfg_buf.data(), cfg_buf.size(), [this](){ return clr_acks > 1; });
         debug_print(" Clear ack'd\n");
         cfg_buf.clear();
 
@@ -328,7 +345,8 @@ namespace caspian
         if(elms_prog > 0)
         {
             fmt::print("Send config for {} elements with {} bytes\n", elms_prog, cfg_buf.size()); 
-            send_and_read(cfg_buf.data(), cfg_buf.size(), [=](){ return cfg_acks >= elms_prog; });
+            //send_and_read(cfg_buf.data(), cfg_buf.size(), [=](){ return cfg_acks >= elms_prog; });
+            send_and_read(cfg_buf, [=](){ return cfg_acks >= elms_prog; });
         }
 
         return true;
@@ -393,12 +411,52 @@ namespace caspian
 
         if(send_buf.size() > 0)
         {
-            send_and_read(send_buf.data(), send_buf.size(), [this](){ return net_time >= exp_end_time; });
+            //send_and_read(send_buf.data(), send_buf.size(), [this](){ return net_time >= exp_end_time; });
+            send_and_read(send_buf, [this](){ return net_time >= exp_end_time; });
         }
 
         return true;
     }
 
+    void UsbCaspian::send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func)
+    {
+        struct ftdi_transfer_control *send_req = ftdi_write_data_submit(ftdi, buf.data(), buf.size());
+
+        if(send_req == NULL)
+        {
+            throw std::runtime_error("FTDI write failed.");
+        }
+
+        do
+        {
+            std::vector<uint8_t> rec = rec_cmd(4096);
+            rec_leftover.insert(rec_leftover.end(), rec.begin(), rec.end());
+
+            int processed = parse_cmds(rec_leftover);
+
+            debug_print("[TIME: {}] Processed {} bytes ");
+            
+            if(processed == rec_leftover.size())
+            {
+                rec_leftover.clear();
+            }
+            else
+            {
+                std::vector<uint8_t> new_leftover(rec_leftover.begin()+processed, rec_leftover.end());
+                rec_leftover = std::move(new_leftover);
+            }
+
+            debug_print(" - {} leftover\n", rec_leftover.size());
+        }
+        while(!cond_func());
+
+        // wait for send to complete -- which it probably has
+        //while(ftdi_transfer_data_done(send_req) > 0); 
+        //libusb_free_transfer(send_req->transfer);
+        //free(send_req);
+    }
+
+    /*
     void UsbCaspian::send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func)
     {
         const int rec_buf_sz = 1024;
@@ -442,6 +500,7 @@ namespace caspian
 
         } while(!cond_func());
     }
+    */
 
     uint64_t UsbCaspian::get_time() const
     {
@@ -467,7 +526,8 @@ namespace caspian
             make_get_metric(buf, *addr);
         }
 
-        send_and_read(buf.data(), buf.size(), [=](){ return rec_metrics.size() >= metric_bytes; });
+        //send_and_read(buf.data(), buf.size(), [=](){ return rec_metrics.size() >= metric_bytes; });
+        send_and_read(buf, [=](){ return rec_metrics.size() >= metric_bytes; });
 
         int64_t val = 0;
 
@@ -489,7 +549,8 @@ namespace caspian
         make_clear_activity(send_buf);
         clr_acks = 0;
 
-        send_and_read(send_buf.data(), send_buf.size(), [this](){ return clr_acks > 0; });
+        //send_and_read(send_buf.data(), send_buf.size(), [this](){ return clr_acks > 0; });
+        send_and_read(send_buf, [this](){ return clr_acks > 0; });
         
         net_time = 0;
         clr_acks = 0;
@@ -507,7 +568,8 @@ namespace caspian
         make_clear_activity(send_buf);
         clr_acks = 0;
 
-        send_and_read(send_buf.data(), send_buf.size(), [this](){ return clr_acks > 0; });
+        //send_and_read(send_buf.data(), send_buf.size(), [this](){ return clr_acks > 0; });
+        send_and_read(send_buf, [this](){ return clr_acks > 0; });
 
         net_time = 0;
         clr_acks = 0;

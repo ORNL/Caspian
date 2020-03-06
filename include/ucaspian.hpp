@@ -27,17 +27,22 @@ namespace caspian
     class UsbCaspian : public Backend
     {
     private:
-        int send_cmd(uint8_t *buf, int size);
-        int rec_cmd(uint8_t *buf, int size);
+        //int send_cmd(uint8_t *buf, int size);
+        //int rec_cmd(uint8_t *buf, int size);
+
+        int send_cmd(const std::vector<uint8_t> &buf);
+        std::vector<uint8_t> rec_cmd(int max_size);
 
         struct ftdi_context *ftdi;
 
     protected:
-        virtual void send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func);
+        //virtual void send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func);
+        virtual void send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func);
 
         /* process output */
-        int parse_cmds(uint8_t *buf, int size);
-        int parse_cmd(uint8_t *buf, int rem);
+        //int parse_cmds(uint8_t *buf, int size);
+        int parse_cmds(const std::vector<uint8_t> &buf);
+        int parse_cmd(const uint8_t *buf, int rem);
 
         template<class ...Args>
         void debug_print(Args&&... args) 
@@ -50,6 +55,8 @@ namespace caspian
 
         /* id -> element coordinates for inputs */
         std::vector<uint32_t> input_map;
+
+        std::vector<uint8_t> rec_leftover;
 
         /* output monitoring */
         std::vector<int64_t> monitor_aftertime;
@@ -114,11 +121,13 @@ namespace caspian
     class VerilatorCaspian : public UsbCaspian
     {
     private:
-        int rec_cmd(uint8_t *buf, int size);
+        //int rec_cmd(uint8_t *buf, int size);
+        std::vector<uint8_t> rec_cmd(int max_size);
         void step_sim(int clocks);
 
     protected: 
-        virtual void send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func);
+        //virtual void send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func);
+        virtual void send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func);
 
         /* Verilator objects */
         std::unique_ptr<Vucaspian> impl;

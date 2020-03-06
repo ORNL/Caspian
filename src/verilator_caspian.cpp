@@ -104,6 +104,7 @@ namespace caspian
         }
     }
 
+    /*
     int VerilatorCaspian::rec_cmd(uint8_t *buf, int size)
     {
         int rec = 0;
@@ -113,7 +114,50 @@ namespace caspian
         }
         return rec;
     }
+    */
 
+    std::vector<uint8_t> VerilatorCaspian::rec_cmd(int max_size)
+    {
+        std::vector<uint8_t> ret;
+
+        while(!fifo_out->empty() && ret.size() < max_size)
+        {
+            ret.push_back(fifo_out->pop());
+        }
+
+        return ret;
+    }
+
+    void VerilatorCaspian::send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func)
+    {
+        fifo_in->push_vec(buf);
+
+        do
+        {
+            step_sim(1000);
+            std::vector<uint8_t> rec = rec_cmd(4096);
+            rec_leftover.insert(rec_leftover.end(), rec.begin(), rec.end());
+
+            int processed = parse_cmds(rec_leftover);
+
+            debug_print("[TIME: {}] Processed {} bytes ", net_time, processed);
+            
+            if(processed == rec_leftover.size())
+            {
+                rec_leftover.clear();
+            }
+            else
+            {
+                std::vector<uint8_t> new_leftover(rec_leftover.begin()+processed, rec_leftover.end());
+                rec_leftover = std::move(new_leftover);
+            }
+
+            debug_print(" - {} leftover\n", rec_leftover.size());
+        }
+        while(!cond_func());
+    }
+
+    /*
     void VerilatorCaspian::send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func)
     {
         const int rec_buf_sz = 4096;
@@ -174,8 +218,8 @@ namespace caspian
             }
 
         } while(!cond_func());
-
     }
+    */
 
 }
 
