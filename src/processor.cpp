@@ -61,7 +61,7 @@ namespace caspian
             jconfig.update(j);
         }
 
-        bool debug = j["Debug"];
+        bool debug = jconfig["Debug"];
 
         if(jconfig["Backend"] == "Event_Simulator")
         {
@@ -85,9 +85,9 @@ namespace caspian
 
             string trace_file = "";
 
-            if(j.contains("Verilator") && j["Verilator"].contains("Trace_File"))
+            if(jconfig.contains("Verilator") && jconfig["Verilator"].contains("Trace_File"))
             {
-                trace_file = j["Verilator"]["Trace_File"];
+                trace_file = jconfig["Verilator"]["Trace_File"];
             }
 
             fmt::print("Open uCaspian Verilator", trace_file);
