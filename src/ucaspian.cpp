@@ -79,7 +79,7 @@ namespace caspian
         uint8_t out_flag = (output) ? (1 << 3) : 0;
         uint8_t dly_and_flg = ((delay & 0x0F) << 4) | out_flag | (enc_leak);
         uint8_t syn_0 = (syn_start >> 8) & 0x0F;
-        uint8_t syn_1 = syn_start & 0x0F;
+        uint8_t syn_1 = syn_start & 0xFF;
 
         buf.insert(buf.end(), {16, addr, threshold, dly_and_flg, syn_0, syn_1, syn_cnt});
     }
@@ -129,18 +129,6 @@ namespace caspian
     {
         if(ftdi != nullptr) ftdi_free(ftdi);
     }
-
-    /*
-    int UsbCaspian::send_cmd(uint8_t *buf, int size)
-    {
-        return ftdi_write_data(ftdi, buf, size);
-    }
-
-    int UsbCaspian::rec_cmd(uint8_t *buf, int size)
-    {
-        return ftdi_read_data(ftdi, buf, size);
-    }
-    */
 
     int UsbCaspian::send_cmd(const std::vector<uint8_t> &buf)
     {
@@ -273,7 +261,7 @@ namespace caspian
         int syn_cnt = 0;
 
         // make some no-ops
-        for(int i = 0; i < 32; i++) cfg_buf.push_back(0);
+        //for(int i = 0; i < 32; i++) cfg_buf.push_back(0);
 
         // clear configuration
         make_clear_config(cfg_buf);
@@ -327,7 +315,7 @@ namespace caspian
             const Neuron *n = elm.second;
 
             // add neuron
-            int n_syn_start = syn_cnt;
+            int n_syn_start = syn_cnt + 1;
             int n_syn_cnt = n->outputs.size();
             bool output_en = (n->output_id >= 0);
             make_cfg_neuron(cfg_buf, n->id, n->threshold, n->delay, n->leak, output_en, n_syn_start, n_syn_cnt);
@@ -336,7 +324,7 @@ namespace caspian
             // add synapses
             for(const std::pair<Neuron*, Synapse*> &p : n->outputs)
             {
-                make_cfg_synapse(cfg_buf, syn_cnt, p.second->weight, p.first->id);
+                make_cfg_synapse(cfg_buf, syn_cnt + 1, p.second->weight, p.first->id);
                 syn_cnt++;
                 elms_prog++;
             }
@@ -345,7 +333,6 @@ namespace caspian
         if(elms_prog > 0)
         {
             fmt::print("Send config for {} elements with {} bytes\n", elms_prog, cfg_buf.size()); 
-            //send_and_read(cfg_buf.data(), cfg_buf.size(), [=](){ return cfg_acks >= elms_prog; });
             send_and_read(cfg_buf, [=](){ return cfg_acks >= elms_prog; });
         }
 
@@ -456,52 +443,6 @@ namespace caspian
         //free(send_req);
     }
 
-    /*
-    void UsbCaspian::send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func)
-    {
-        const int rec_buf_sz = 1024;
-        static uint8_t rec_buf[rec_buf_sz];
-        static int rec_offset = 0;
-        int processed = 0;
-        int rec_bytes = 0;
-        int exp_proc_bytes = 0;
-
-        // async send
-        struct ftdi_transfer_control *send_req = ftdi_write_data_submit(ftdi, buf, size);
-
-        if(send_req == NULL)
-        {
-            throw std::runtime_error("FTDI write failed");
-        }
-
-        do {
-            // zero buffer
-            memset(rec_buf + rec_offset, 0, rec_buf_sz - rec_offset);
-
-            // get output
-            rec_bytes = rec_cmd(rec_buf + rec_offset, rec_buf_sz - rec_offset);
-
-            // parse the buffer
-            exp_proc_bytes = rec_bytes + rec_offset;
-            processed = parse_cmds(rec_buf, exp_proc_bytes);
-            
-            // determine if there are leftover bits to keep for next parse
-            if(processed != exp_proc_bytes)
-            {
-                rec_offset = (exp_proc_bytes - processed);
-                memcpy(rec_buf, rec_buf + processed, rec_offset);
-            }
-            else
-            {
-                rec_offset = 0;
-            }
-
-            debug_print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, processed, rec_offset);
-
-        } while(!cond_func());
-    }
-    */
-
     uint64_t UsbCaspian::get_time() const
     {
         return net_time;
@@ -526,7 +467,6 @@ namespace caspian
             make_get_metric(buf, *addr);
         }
 
-        //send_and_read(buf.data(), buf.size(), [=](){ return rec_metrics.size() >= metric_bytes; });
         send_and_read(buf, [=](){ return rec_metrics.size() >= metric_bytes; });
 
         int64_t val = 0;
@@ -549,7 +489,6 @@ namespace caspian
         make_clear_activity(send_buf);
         clr_acks = 0;
 
-        //send_and_read(send_buf.data(), send_buf.size(), [this](){ return clr_acks > 0; });
         send_and_read(send_buf, [this](){ return clr_acks > 0; });
         
         net_time = 0;
@@ -568,7 +507,6 @@ namespace caspian
         make_clear_activity(send_buf);
         clr_acks = 0;
 
-        //send_and_read(send_buf.data(), send_buf.size(), [this](){ return clr_acks > 0; });
         send_and_read(send_buf, [this](){ return clr_acks > 0; });
 
         net_time = 0;
