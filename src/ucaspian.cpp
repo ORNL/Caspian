@@ -19,7 +19,6 @@
 
 namespace caspian
 {
-
     /* packet functions */
     inline constexpr int sizeof_input_fire()     { return 2; }
     inline constexpr int sizeof_step()           { return 2; }
@@ -96,6 +95,8 @@ namespace caspian
     {
         int ret;
 
+        // Set up hardware state
+        hw_state = std::make_unique<HardwareState>(debug);
         set_debug(debug);
 
         // TODO: interpret device string
@@ -118,6 +119,9 @@ namespace caspian
 
             // set latency timer
             ftdi_set_latency_timer(ftdi, 1);
+
+            // purge USB buffers on FT chip
+            ftdi_usb_purge_buffers(ftdi);
         }
         else
         {
@@ -144,7 +148,7 @@ namespace caspian
         return std::vector<uint8_t>(buf, buf+bytes);
     }
 
-    int UsbCaspian::parse_cmds(const std::vector<uint8_t> &buf)
+    int HardwareState::parse_cmds(const std::vector<uint8_t> &buf)
     {
         debug_print("Enter parse_cmds -- buf size: {}\n", buf.size());
         int offset = 0;
@@ -152,9 +156,7 @@ namespace caspian
         while(offset < buf.size())
         {
             int rem = buf.size() - offset;
-            debug_print(" > Rem: {}", rem);
-            int inc = parse_cmd(buf.data()+offset, rem);
-            debug_print(" Inc: {}\n", inc);
+            int inc = parse_cmd(&(buf[offset]), rem);
             offset += inc;
             if(inc == 0) break;
         }
@@ -162,7 +164,7 @@ namespace caspian
         return offset;
     }
 
-    int UsbCaspian::parse_cmd(const uint8_t *buf, int rem)
+    int HardwareState::parse_cmd(const uint8_t *buf, int rem)
     {
         int incr = 1;
         int addr;
@@ -176,10 +178,12 @@ namespace caspian
         {
             case CFG_ACK:
                 cfg_acks++;
+                debug_print(" > Config Ack {}\n", cfg_acks);
                 break;
 
             case CLR_ACK:
                 clr_acks++;
+                debug_print(" > Clear Ack {}\n", clr_acks);
                 break;
 
             case METRIC_RESP:
@@ -187,6 +191,7 @@ namespace caspian
                 {
                     return 0;
                 }
+                debug_print(" > Metric Response\n");
 
                 metric_addr = buf[1];
                 metric_value = buf[2];
@@ -202,6 +207,8 @@ namespace caspian
 
                 t = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
                 incr = 5;
+
+                debug_print(" > Time Update: {}\n", t);
 
                 if(t - net_time > 255)
                     fmt::print("Corrupted time {} -> {} -- {} {} {} {} {}\n", net_time, t, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
@@ -221,6 +228,8 @@ namespace caspian
                 addr = buf[1];
                 incr = 2;
 
+                debug_print(" > Fire {} [t={}]\n", addr, net_time);
+
                 if(!net->is_neuron(addr))
                 {
                     fmt::print("Corrupted fire {}\n", addr);
@@ -232,8 +241,6 @@ namespace caspian
                 // add fire
                 time_diff = net_time - run_start_time;
                 after_start = (time_diff >= monitor_aftertime[id]);
-
-                debug_print("[t={}] Fire at {} -- output id {}\n", net_time, addr, id);
 
                 if(after_start)
                 {
@@ -252,7 +259,7 @@ namespace caspian
 
     void UsbCaspian::apply_input(int input_id, int16_t w, uint64_t t)
     {
-        input_fires.emplace_back(net->get_input(input_id), w, net_time + t);
+        input_fires.emplace_back(net->get_input(input_id), w, hw_state->net_time + t);
     }
 
     bool UsbCaspian::configure(Network *new_net)
@@ -260,22 +267,17 @@ namespace caspian
         std::vector<uint8_t> cfg_buf;
         int syn_cnt = 0;
 
-        // make some no-ops
-        //for(int i = 0; i < 32; i++) cfg_buf.push_back(0);
-
         // clear configuration
         make_clear_config(cfg_buf);
-        make_clear_activity(cfg_buf);
-        debug_print("Preparing to send clear config, clear activity...");
-        send_and_read(cfg_buf, [this](){ return clr_acks > 1; });
-        //send_and_read(cfg_buf.data(), cfg_buf.size(), [this](){ return clr_acks > 1; });
+        debug_print("Preparing to send clear config...");
+        send_and_read(cfg_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
         debug_print(" Clear ack'd\n");
         cfg_buf.clear();
 
         // clear fire tracking information
-        monitor_aftertime.clear();
-        monitor_precise.clear();
-        output_logs.clear();
+        hw_state->monitor_aftertime.clear();
+        hw_state->monitor_precise.clear();
+        hw_state->output_logs.clear();
 
         if(new_net == nullptr)
         {
@@ -293,29 +295,17 @@ namespace caspian
         }
 
         net = new_net;
-
-        monitor_aftertime.resize(net->num_outputs(), -1);
-        monitor_precise.resize(net->num_outputs(), false);
-        output_logs.emplace_back(net->num_outputs());
-
-        debug_print("[configure] outputs: {} ", net->num_outputs());
-        debug_print(" monitor_aftertime: {} monitor_precise: {} output_logs {}\n", 
-                monitor_aftertime.size(), monitor_precise.size(), output_logs.size());
-
-        net_time = 0;
-        cfg_acks = 0;
-        clr_acks = 0;
+        hw_state->configure(net);
 
         unsigned int elms_prog = 0;
 
         // Generate configuration packets
-        // TODO: handle overflow in buffer
         for(auto &&elm : (*net))
         {
             const Neuron *n = elm.second;
 
             // add neuron
-            int n_syn_start = syn_cnt + 1;
+            int n_syn_start = syn_cnt;
             int n_syn_cnt = n->outputs.size();
             bool output_en = (n->output_id >= 0);
             make_cfg_neuron(cfg_buf, n->id, n->threshold, n->delay, n->leak, output_en, n_syn_start, n_syn_cnt);
@@ -324,7 +314,7 @@ namespace caspian
             // add synapses
             for(const std::pair<Neuron*, Synapse*> &p : n->outputs)
             {
-                make_cfg_synapse(cfg_buf, syn_cnt + 1, p.second->weight, p.first->id);
+                make_cfg_synapse(cfg_buf, syn_cnt, p.second->weight, p.first->id);
                 syn_cnt++;
                 elms_prog++;
             }
@@ -333,7 +323,7 @@ namespace caspian
         if(elms_prog > 0)
         {
             fmt::print("Send config for {} elements with {} bytes\n", elms_prog, cfg_buf.size()); 
-            send_and_read(cfg_buf, [=](){ return cfg_acks >= elms_prog; });
+            send_and_read(cfg_buf, [=](HardwareState *hw){ return hw->cfg_acks >= elms_prog; });
         }
 
         return true;
@@ -348,10 +338,10 @@ namespace caspian
     bool UsbCaspian::simulate(uint64_t steps)
     {
         std::vector<uint8_t> send_buf;
-        uint64_t end_time = net_time + steps;
-        uint64_t cur_time = net_time;
+        uint64_t end_time = hw_state->net_time + steps;
+        uint64_t cur_time = hw_state->net_time;
 
-        run_start_time = net_time;
+        hw_state->run_start_time = hw_state->net_time;
         exp_end_time = end_time;
 
         auto make_steps = [&](int steps){
@@ -369,7 +359,7 @@ namespace caspian
         };
 
         // clear fire tracking information
-        for(auto &m : output_logs) m.clear();
+        for(auto &m : hw_state->output_logs) m.clear();
 
         // First, sort our input fires
         std::sort(input_fires.begin(), input_fires.end(), std::less<InputFireEvent>());
@@ -398,54 +388,111 @@ namespace caspian
 
         if(send_buf.size() > 0)
         {
-            //send_and_read(send_buf.data(), send_buf.size(), [this](){ return net_time >= exp_end_time; });
-            send_and_read(send_buf, [this](){ return net_time >= exp_end_time; });
+            send_and_read(send_buf, [=](HardwareState *hw){ return hw->net_time >= end_time; });
         }
 
         return true;
     }
 
-    void UsbCaspian::send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func)
+    inline void read_fn(struct ftdi_context *ftdi, HardwareState *hw, std::function<bool(HardwareState*)> cond)
     {
-        struct ftdi_transfer_control *send_req = ftdi_write_data_submit(ftdi, buf.data(), buf.size());
+        std::vector<int> processed_bytes;
+        const int max_zero_transfers = 10;
 
+        do
+        {
+            const int rsz = 7936;
+            uint8_t cbuf[rsz];
+            int bytes_read = ftdi_read_data(ftdi, cbuf, rsz);
+            std::vector<uint8_t> rec(cbuf, cbuf+bytes_read);
+            hw->rec_leftover.insert(hw->rec_leftover.end(), rec.begin(), rec.end());
+
+            int processed = hw->parse_cmds(hw->rec_leftover);
+            processed_bytes.push_back(processed);
+
+            hw->debug_print("[TIME: {}] Processed {} bytes ", hw->net_time, processed);
+            
+            if(processed == hw->rec_leftover.size())
+            {
+                hw->rec_leftover.clear();
+            }
+            else
+            {
+                std::vector<uint8_t> new_leftover(hw->rec_leftover.begin()+processed, hw->rec_leftover.end());
+                hw->rec_leftover = std::move(new_leftover);
+            }
+
+            hw->debug_print(" - {} leftover\n", hw->rec_leftover.size());
+
+            if(processed_bytes.size() > max_zero_transfers)
+            {
+                int processed_last = 0;
+                for(size_t i = 0; i < max_zero_transfers; i++)
+                {
+                    processed_last += processed_bytes[processed_bytes.size()-1-i];
+                }
+
+                if(processed_last == 0)
+                {
+                    hw->debug_print("Processed Bytes: {}\n", processed);
+                    hw->debug_print("Exit due to 0 bytes processed recently.\n");
+
+                    // Check FTDI modem status
+                    unsigned short ftdi_status;
+                    ftdi_poll_modem_status(ftdi, &ftdi_status);
+
+                    fmt::print("Transfer Error | FTDI status: {:x}\n", ftdi_status);
+                    exit(0);
+                }
+            }
+        }
+        while(!cond(hw));
+    }
+
+    void UsbCaspian::send_and_read(std::vector<uint8_t> &buf, std::function<bool(HardwareState*)> &&cond)
+    {
+        // Make a reader thread using the conditional function
+        std::thread reader(read_fn, ftdi, hw_state.get(), cond);
+
+        std::vector<struct ftdi_transfer_control*> sends;
+
+        while(buf.size() < 62) buf.push_back(0);
+
+        /*
+        debug_print(" < Async write of {} bytes.\n", buf.size());
+        struct ftdi_transfer_control *send_req = ftdi_write_data_submit(ftdi, buf.data(), buf.size());
+        */
+
+        const int block = 496;
+        int boff = 0;
+        while(boff < buf.size())
+        {
+            int sz = std::min(int(buf.size()-boff), block);
+            debug_print(" < Async write of {} bytes -- offset: {} -- total: {}", sz, boff, buf.size());
+            sends.push_back(ftdi_write_data_submit(ftdi, &(buf[boff]), sz));
+            boff += sz;
+        }
+        
+
+        /*
         if(send_req == NULL)
         {
             throw std::runtime_error("FTDI write failed.");
         }
+        */
 
-        do
-        {
-            std::vector<uint8_t> rec = rec_cmd(4096);
-            rec_leftover.insert(rec_leftover.end(), rec.begin(), rec.end());
-
-            int processed = parse_cmds(rec_leftover);
-
-            debug_print("[TIME: {}] Processed {} bytes ");
-            
-            if(processed == rec_leftover.size())
-            {
-                rec_leftover.clear();
-            }
-            else
-            {
-                std::vector<uint8_t> new_leftover(rec_leftover.begin()+processed, rec_leftover.end());
-                rec_leftover = std::move(new_leftover);
-            }
-
-            debug_print(" - {} leftover\n", rec_leftover.size());
-        }
-        while(!cond_func());
+        //read_fn(ftdi, hw_state.get(), cond);
+        reader.join();
 
         // wait for send to complete -- which it probably has
-        //while(ftdi_transfer_data_done(send_req) > 0); 
-        //libusb_free_transfer(send_req->transfer);
-        //free(send_req);
+        //while(ftdi_transfer_data_done(send_req) > 0);
+        //int tr = ftdi_transfer_data_done(send_req);
+        for(size_t i = 0; i < sends.size(); i++) ftdi_transfer_data_done(sends[i]);
     }
 
     uint64_t UsbCaspian::get_time() const
     {
-        return net_time;
+        return hw_state->net_time;
     }
 
     double UsbCaspian::get_metric(const std::string& metric)
@@ -459,7 +506,7 @@ namespace caspian
 
         unsigned int metric_bytes = mit->second.size();
         std::vector<uint8_t> buf;
-        rec_metrics.clear();
+        hw_state->rec_metrics.clear();
 
         for(auto addr = mit->second.begin(); addr != mit->second.end(); addr++)
         {
@@ -467,18 +514,18 @@ namespace caspian
             make_get_metric(buf, *addr);
         }
 
-        send_and_read(buf, [=](){ return rec_metrics.size() >= metric_bytes; });
+        send_and_read(buf, [=](HardwareState *hw){ return hw->rec_metrics.size() >= metric_bytes; });
 
         int64_t val = 0;
 
-        for(auto metric : rec_metrics)
+        for(auto metric : hw_state->rec_metrics)
         {
             fmt::print("Addr: {} Value: {}\n", metric.first, metric.second);
             val = val << 8;
             val |= metric.second;
         }
 
-        rec_metrics.clear();
+        hw_state->rec_metrics.clear();
 
         return val;
     }
@@ -487,34 +534,34 @@ namespace caspian
     {
         std::vector<uint8_t> send_buf;
         make_clear_activity(send_buf);
-        clr_acks = 0;
+        hw_state->clr_acks = 0;
 
-        send_and_read(send_buf, [this](){ return clr_acks > 0; });
+        send_and_read(send_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
         
-        net_time = 0;
-        clr_acks = 0;
+        hw_state->net_time = 0;
+        hw_state->clr_acks = 0;
         input_fires.clear();
 
         // clear fire tracking information
-        for(auto &a : monitor_aftertime) a = -1;
-        for(auto &m : output_logs) m.clear();
-        for(auto &&p : monitor_precise) p = false;
+        for(auto &a : hw_state->monitor_aftertime) a = -1;
+        for(auto &m : hw_state->output_logs) m.clear();
+        for(auto &&p : hw_state->monitor_precise) p = false;
     }
 
     void UsbCaspian::clear_activity()
     {
         std::vector<uint8_t> send_buf;
         make_clear_activity(send_buf);
-        clr_acks = 0;
+        hw_state->clr_acks = 0;
 
-        send_and_read(send_buf, [this](){ return clr_acks > 0; });
+        send_and_read(send_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
 
-        net_time = 0;
-        clr_acks = 0;
+        hw_state->net_time = 0;
+        hw_state->clr_acks = 0;
         input_fires.clear();
 
         // clear fire tracking information
-        for(auto &m : output_logs) m.clear();
+        for(auto &m : hw_state->output_logs) m.clear();
     }
 
     bool UsbCaspian::update()
@@ -528,43 +575,103 @@ namespace caspian
         return net;
     }
 
+    bool UsbCaspian::track_timing(uint32_t output_id, bool do_tracking)
+    {
+        return hw_state->track_timing(output_id, do_tracking);
+    }
+
+    int UsbCaspian::get_output_count(uint32_t output_id, int network_id)
+    {
+        return hw_state->get_output_count(output_id, network_id);
+    }
+
+    int UsbCaspian::get_last_output_time(uint32_t output_id, int network_id)
+    {
+        return hw_state->get_last_output_time(output_id, network_id);
+    }
+
+    std::vector<uint32_t> UsbCaspian::get_output_values(uint32_t output_id, int network_id)
+    {
+        return hw_state->get_output_values(output_id, network_id);
+    }
+
     bool UsbCaspian::track_aftertime(uint32_t output_id, uint64_t aftertime)
+    {
+        return hw_state->track_aftertime(output_id, aftertime);
+    }
+
+    void UsbCaspian::set_debug(bool debug)
+    {
+        m_debug = debug;
+        if(hw_state) hw_state->m_debug = debug;
+    }
+
+
+    void HardwareState::clear()
+    {
+
+    }
+
+    void HardwareState::clear_all()
+    {
+
+    }
+
+    void HardwareState::remove_network()
+    {
+        net = nullptr;
+        clear_all();
+    }
+
+    void HardwareState::configure(Network *new_net)
+    {
+        net = new_net;
+
+        monitor_aftertime.resize(net->num_outputs(), -1);
+        monitor_precise.resize(net->num_outputs(), false);
+        output_logs.emplace_back(net->num_outputs());
+
+        debug_print("[configure] outputs: {} ", net->num_outputs());
+        debug_print(" monitor_aftertime: {} monitor_precise: {} output_logs {}\n", 
+                monitor_aftertime.size(), monitor_precise.size(), output_logs.size());
+
+        net_time = 0;
+        cfg_acks = 0;
+        clr_acks = 0;
+    }
+
+    bool HardwareState::track_aftertime(uint32_t output_id, uint64_t aftertime)
     {
         if(output_id >= monitor_aftertime.size()) return false;
         monitor_aftertime[output_id] = aftertime;
         return true;
     }
     
-    bool UsbCaspian::track_timing(uint32_t output_id, bool do_tracking)
+    bool HardwareState::track_timing(uint32_t output_id, bool do_tracking)
     {
         if(output_id >= monitor_precise.size()) return false;
         monitor_precise[output_id] = do_tracking;
         return true;
     }
 
-    int UsbCaspian::get_output_count(uint32_t output_id, int network_id)
+    int HardwareState::get_output_count(uint32_t output_id, int network_id)
     {
         if(output_id >= output_logs[network_id].fire_counts.size()) return -1;
         return output_logs[network_id].fire_counts[output_id];
     }
 
-    int UsbCaspian::get_last_output_time(uint32_t output_id, int network_id)
+    int HardwareState::get_last_output_time(uint32_t output_id, int network_id)
     {
         if(output_id >= output_logs[network_id].last_fire_times.size()) return -1;
         return output_logs[network_id].last_fire_times[output_id];
     }
 
-    std::vector<uint32_t> UsbCaspian::get_output_values(uint32_t output_id, int network_id)
+    std::vector<uint32_t> HardwareState::get_output_values(uint32_t output_id, int network_id)
     {
         if(output_id >= output_logs[network_id].recorded_fires.size()) 
             return std::vector<uint32_t>();
 
         return output_logs[network_id].recorded_fires[output_id];
-    }
-
-    void UsbCaspian::set_debug(bool debug)
-    {
-        m_debug = debug;
     }
 
 }

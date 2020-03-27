@@ -68,7 +68,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0)
         // Queue up inputs
         for(int i = 0; i < h; ++i)
         {
-            sim->apply_input(i, 500, i);
+            sim->apply_input(i, 255, i);
         }
 
         // Simulate with sufficient time (intentionally extra)
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     else if(backend == "ucaspian")
     {
         fmt::print("Using uCaspian backend\n");
-        sim = new UsbCaspian("/dev/ttyUSB0");
+        sim = new UsbCaspian(true);
     }
     else
     {

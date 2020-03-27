@@ -22,27 +22,76 @@
 
 namespace caspian
 {
+    
+    class HardwareState
+    {
+    public:
+        HardwareState(bool debug = false) : m_debug(debug) {}
+
+        /* allow easy debugging statements */
+        template<class ...Args>
+        void debug_print(Args&&... args) 
+        { 
+            if(m_debug) fmt::print(std::forward<Args>(args)...);
+        }
+
+        void configure(Network *net);
+        void clear();
+        void clear_all();
+        void clear_tracking();
+        void remove_network();
+
+        /* process output */
+        int parse_cmds(const std::vector<uint8_t> &buf);
+        int parse_cmd(const uint8_t *buf, int rem);
+
+        /* Track outputs */
+        bool track_aftertime(uint32_t output_id, uint64_t aftertime);
+        bool track_timing(uint32_t output_id, bool do_tracking = true);
+
+        /* Get outputs from the simulation */
+        int  get_output_count(uint32_t output_id, int network_id = 0);
+        int  get_last_output_time(uint32_t output_id, int network_id = 0);
+        std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0);
+
+        /* Network on the hardware */
+        Network *net;
+
+        /* Hardware time */
+        uint64_t net_time = 0;
+        uint64_t run_start_time = 0;
+
+        /* acks from hw */
+        unsigned int clr_acks = 0;
+        unsigned int cfg_acks = 0;
+
+        /* metric reads */
+        std::vector<std::pair<uint8_t, uint8_t>> rec_metrics;
+
+        /* output fire tracking */
+        std::vector<int64_t> monitor_aftertime;
+        std::vector<bool> monitor_precise;
+        std::vector<OutputMonitor> output_logs;
+
+        /* leftover data */
+        std::vector<uint8_t> rec_leftover;
+
+        /* debugging mode */
+        bool m_debug;
+    };
 
     /* uCaspian with UART Serial communication (ice40UP5k + FTDI FT232h) */
     class UsbCaspian : public Backend
     {
     private:
-        //int send_cmd(uint8_t *buf, int size);
-        //int rec_cmd(uint8_t *buf, int size);
-
         int send_cmd(const std::vector<uint8_t> &buf);
         std::vector<uint8_t> rec_cmd(int max_size);
 
         struct ftdi_context *ftdi;
 
     protected:
-        //virtual void send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func);
-        virtual void send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func);
-
-        /* process output */
-        //int parse_cmds(uint8_t *buf, int size);
-        int parse_cmds(const std::vector<uint8_t> &buf);
-        int parse_cmd(const uint8_t *buf, int rem);
+        virtual void send_and_read(std::vector<uint8_t> &buf, 
+                std::function<bool(HardwareState*)> &&cond_func);
 
         template<class ...Args>
         void debug_print(Args&&... args) 
@@ -53,29 +102,20 @@ namespace caspian
         /* stores the currently loaded network */
         Network *net;
 
+        /* Hardware state */
+        std::unique_ptr<HardwareState> hw_state;
+
         /* id -> element coordinates for inputs */
         std::vector<uint32_t> input_map;
-
-        std::vector<uint8_t> rec_leftover;
-
-        /* output monitoring */
-        std::vector<int64_t> monitor_aftertime;
-        std::vector<bool> monitor_precise;
-        std::vector<OutputMonitor> output_logs;
 
         /* queued fires */
         std::vector<InputFireEvent> input_fires;
 
         /* meta information */
         bool m_debug = false;
-        unsigned int clr_acks = 0;
-        unsigned int cfg_acks = 0;
-        std::vector<std::pair<uint8_t,uint8_t>> rec_metrics;
 
         /* Network state */
-        uint64_t run_start_time = 0;
         uint64_t exp_end_time;
-        uint64_t net_time = 0;
 
     public:
         UsbCaspian(bool debug=false, std::string device = "");
@@ -121,12 +161,10 @@ namespace caspian
     class VerilatorCaspian : public UsbCaspian
     {
     private:
-        //int rec_cmd(uint8_t *buf, int size);
         std::vector<uint8_t> rec_cmd(int max_size);
         void step_sim(int clocks);
 
     protected: 
-        //virtual void send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func);
         virtual void send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func);
 
         /* Verilator objects */

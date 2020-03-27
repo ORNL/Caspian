@@ -36,8 +36,9 @@ MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 PROJECT_DIR := $(dir $(MKFILE_PATH))
 
 # Compilation Flags
-CFLAGS ?= -Wall -Wextra -pipe -O3
-CFLAGSBASE = $(CFLAGS) -std=c++11 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
+CFLAGS ?= -Wall -Wextra -pipe -O3 -g
+CFLAGSBASE = $(CFLAGS) -std=c++14 -I$(INC) -I$(ROOT_INCLUDE)
+#CFLAGSBASE = $(CFLAGS) -std=c++11 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
 LFLAGS = -lpthread -lz -lftdi1
 
 CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
@@ -132,10 +133,10 @@ PYBUILD_OBJECTS := $(patsubst $(SRC)/%.cpp,$(PYBUILD)/%.o,$(SOURCES)) \
 PYBUILD_TL_OBJECTS := $(wildcard $(ROOT)/$(PYBUILD)/*.o)
 
 $(BINDING_OBJECTS): $(PYBUILD_BINDINGS)/%.o : $(PYBINDINGS)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(PYBUILD_BINDINGS)
-	$(CXX) $(PYBUILD_FLAGS) -DWITH_VERILATOR -c $< -o $@
+	$(CXX) $(PYBUILD_FLAGS) -c $< -o $@
 
 $(PYBUILD_OBJECTS): $(PYBUILD)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE)/framework.hpp | $(PYBUILD)
-	$(CXX) $(PYBUILD_FLAGS) -DWITH_VERILATOR -c $< -o $@
+	$(CXX) $(PYBUILD_FLAGS) -c $< -o $@
 
 $(PYLIBCASPIAN): $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYFRAMEWORK) $(V_OBJECTS)
 	$(CXX) $(PYBUILD_FLAGS) $(PYBUILD_LFLAGS) $(PYBUILD_OBJECTS) $(BINDING_OBJECTS) $(PYBUILD_TL_OBJECTS) $(V_OBJECTS) -o $@ -lftdi1
@@ -161,9 +162,9 @@ run_test: $(TEST_EXEC)
 ## Utilities
 UTILITIES  = $(BIN)/benchmark \
              $(BIN)/all_to_all_bench \
-	     $(BIN)/netop_bench \
-	     $(BIN)/paper_bench \
              $(BIN)/prune
+	     #$(BIN)/paper_bench \
+	     #$(BIN)/netop_bench \
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
 	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)
