@@ -106,6 +106,9 @@ namespace caspian
         /* collection of input fires organized by time */
         std::vector<InputFireEvent> input_fires;
 
+        /* hacked up spike raster */
+        std::vector<std::vector<uint32_t>> all_spikes;
+
         /* stores the currently loaded network */
         std::vector<Network*> nets; // if multiple are loaded, all are here -- first is also stored in *net
         Network *net; // if only one is loaded, it is here
@@ -126,6 +129,9 @@ namespace caspian
         uint16_t dly_mask  = 0x1;
         bool soft_reset = false;
         bool multi_net_sim = false;
+
+        /* collect all spikes? */
+        bool collect_all = false;
 
         #ifdef TIMING
         std::map<std::string, int> meta;
@@ -168,6 +174,9 @@ namespace caspian
         int  get_output_count(uint32_t output_id, int network_id = 0);
         int  get_last_output_time(uint32_t output_id, int network_id = 0);
         std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0);
+
+        void collect_all_spikes(bool collect = true); 
+        std::vector<std::vector<uint32_t>> get_all_spikes(); 
     };
 }
 

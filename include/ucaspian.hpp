@@ -105,6 +105,9 @@ namespace caspian
         int  get_output_count(uint32_t output_id, int network_id = 0);
         int  get_last_output_time(uint32_t output_id, int network_id = 0);
         std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0);
+
+        void collect_all_spikes(bool collect = true); 
+        std::vector<std::vector<uint32_t>> get_all_spikes(); 
     };
 
 #ifdef WITH_VERILATOR

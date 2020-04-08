@@ -112,6 +112,9 @@ namespace caspian
             // increment count of fires
             metric_fires++;
 
+            // optionally, collect every spike
+            if(collect_all) all_spikes.back().push_back(n->id);
+
             // reset charge after firing (soft reset => charge - threshold, hard reset => 0)
             n->charge = (soft_reset) ? n->charge - n->threshold : 0;
 
@@ -172,6 +175,9 @@ namespace caspian
         // clear processed events all at once
         fires[f_idx].clear();
 
+        // add next list to all_spikes; might be empty if there are no fires
+        all_spikes.push_back({});
+
         // check thresholds after all fires are processed for the timestep
         for(size_t i = 0; i < thresh_check.size(); ++i)
         {
@@ -194,6 +200,7 @@ namespace caspian
         monitor_aftertime.clear();
         monitor_precise.clear();
         output_logs.clear();
+        all_spikes.clear();
 
         // clear internal fires
         for(auto &&f : fires)
@@ -292,6 +299,8 @@ namespace caspian
         run_start_time = net->get_time();
         end_time = run_start_time + steps;
 
+        all_spikes.clear();
+
         // ok, not a strictly event-based system for now
         for(net_time = run_start_time; net_time < end_time; ++net_time)
             do_cycle();
@@ -373,6 +382,7 @@ namespace caspian
         net_time = 0;
         input_fires.clear();
         thresh_check.clear();
+        all_spikes.clear();
 
         for(Network *n : nets)
             n->reset();
@@ -393,6 +403,7 @@ namespace caspian
         net_time = 0;
         input_fires.clear();
         thresh_check.clear();
+        all_spikes.clear();
 
         for(Network *n : nets)
             n->clear_activity();
@@ -435,6 +446,16 @@ namespace caspian
             return std::vector<uint32_t>();
 
         return output_logs[network_id].recorded_fires[output_id];
+    }
+
+    void Simulator::collect_all_spikes(bool collect)
+    {
+        collect_all = collect;
+    }
+
+    std::vector<std::vector<uint32_t>> Simulator::get_all_spikes()
+    {
+        return all_spikes;
     }
 
     Simulator::Simulator()
