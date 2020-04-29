@@ -128,7 +128,7 @@ namespace caspian
         return ret;
     }
 
-    void VerilatorCaspian::send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func)
+    void VerilatorCaspian::send_and_read(std::vector<uint8_t> &buf, std::function<bool(HardwareState*)> &&cond_func)
     {
         fifo_in->push_vec(buf);
 
@@ -136,25 +136,25 @@ namespace caspian
         {
             step_sim(1000);
             std::vector<uint8_t> rec = rec_cmd(4096);
-            rec_leftover.insert(rec_leftover.end(), rec.begin(), rec.end());
+            hw_state->rec_leftover.insert(hw_state->rec_leftover.end(), rec.begin(), rec.end());
 
-            int processed = parse_cmds(rec_leftover);
+            int processed = hw_state->parse_cmds(hw_state->rec_leftover);
 
-            debug_print("[TIME: {}] Processed {} bytes ", net_time, processed);
+            debug_print("[TIME: {}] Processed {} bytes ", hw_state->net_time, processed);
             
-            if(processed == rec_leftover.size())
+            if(processed == hw_state->rec_leftover.size())
             {
-                rec_leftover.clear();
+                hw_state->rec_leftover.clear();
             }
             else
             {
-                std::vector<uint8_t> new_leftover(rec_leftover.begin()+processed, rec_leftover.end());
-                rec_leftover = std::move(new_leftover);
+                std::vector<uint8_t> new_leftover(hw_state->rec_leftover.begin()+processed, hw_state->rec_leftover.end());
+                hw_state->rec_leftover = std::move(new_leftover);
             }
 
-            debug_print(" - {} leftover\n", rec_leftover.size());
+            hw_state->debug_print(" - {} leftover\n", hw_state->rec_leftover.size());
         }
-        while(!cond_func());
+        while(!cond_func(hw_state.get()));
     }
 
     /*

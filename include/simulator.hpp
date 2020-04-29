@@ -73,23 +73,21 @@ namespace caspian
     protected:
 
         /* processes a selected fire event */
-        void process_fire(const FireEvent &e);
+        void process_fire(const FireEvent &e) noexcept;
         void process_fire(const InputFireEvent &e);
 
         /* Updates last event & leak for a neuron */
-        void refresh_neuron(Neuron *n);
+        void refresh_neuron(Neuron *n) noexcept;
 
         /* post-accumulation check for any neuron which may fire */
-        void threshold_check(Neuron *elm);
-
-        /* Neuron leak operation */
-        void neuron_leak(Neuron *n);
+        void threshold_check(Neuron *elm) noexcept;
 
         /* executes a single cycle of the simulation */
         void do_cycle();
 
+        /* fmtlib can throw an exception; we don't care in debug mode */
         template<typename... Args>
-        void debug_print(Args... args)
+        void debug_print(Args... args) noexcept
         {
             if(m_debug) fmt::print(std::forward<Args>(args)...);
         }

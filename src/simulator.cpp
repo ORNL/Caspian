@@ -13,12 +13,13 @@ namespace caspian
     using constants::delay_bucket;
 
     template <typename T>
-    static inline T clamp(T value, T min_value, T max_value)
+    static inline T clamp(T value, T min_value, T max_value) noexcept
     {
-        return std::max(min_value, std::min(max_value, value));
+        //return std::max(min_value, std::min(max_value, value));
+        return (value > max_value) ? max_value : ((value < min_value) ? min_value : value);
     }
 
-    void Simulator::refresh_neuron(Neuron *n)
+    void Simulator::refresh_neuron(Neuron *n) noexcept
     {
         int32_t imm = n->charge;
 
@@ -26,13 +27,13 @@ namespace caspian
         //   This approximates 2^(-t/tau) exponential leak
         //   only uses integer multiplication, addition/subtraction, and bit shifts
         //   along with a look up table with tau number of entries
-        if(n->leak > -1 && net_time > n->last_event)
+        if(n->leak >= 0 && net_time > n->last_event)
         {
             int t = net_time - n->last_event;
             int shamt = t >> n->leak;
             int t_masked = t & ((1 << n->leak)-1);
             
-            imm = abs(imm);
+            imm = (imm > 0) ? imm : -imm;
 
             if(t_masked != 0)
             {
@@ -81,7 +82,7 @@ namespace caspian
         }
     }
 
-    void Simulator::process_fire(const FireEvent &e)
+    void Simulator::process_fire(const FireEvent &e) noexcept
     {
         if(e.neuron->last_event != net_time)
             refresh_neuron(e.neuron);
@@ -106,7 +107,7 @@ namespace caspian
         }
     }
 
-    void Simulator::threshold_check(Neuron *n)
+    void Simulator::threshold_check(Neuron *n) noexcept
     {
         // reset tcheck status
         n->tcheck = false;

@@ -72,6 +72,7 @@ namespace caspian
             // Synaptic delay is not supported on this platform
             jconfig["Min_Synapse_Delay"] = 0;
             jconfig["Max_Synapse_Delay"] = 0;
+            jconfig["Leak_Enable"] = false; // temporary until I support this
 
             fmt::print("Open uCaspian device\n");
             dev = new UsbCaspian(debug);
@@ -82,6 +83,7 @@ namespace caspian
             // Synaptic delay is not supported on this platform
             jconfig["Min_Synapse_Delay"] = 0;
             jconfig["Max_Synapse_Delay"] = 0;
+            jconfig["Leak_Enable"] = false; // temporary until I support this
 
             string trace_file = "";
 
@@ -90,9 +92,9 @@ namespace caspian
                 trace_file = jconfig["Verilator"]["Trace_File"];
             }
 
-            fmt::print("Open uCaspian Verilator", trace_file);
+            if(debug) fmt::print("Open uCaspian Verilator", trace_file);
             if(debug) fmt::print(" (trace: {})", trace_file);
-            fmt::print("\n");
+            if(debug) fmt::print("\n");
 
             dev = new VerilatorCaspian(debug, trace_file);
         }
