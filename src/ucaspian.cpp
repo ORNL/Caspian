@@ -294,6 +294,19 @@ namespace caspian
             return false;
         }
 
+        // check if inputs are id <= 127
+        for(size_t i = 0; i < new_net->num_inputs(); i++)
+        {
+            uint32_t nid = new_net->get_input(i);
+            if(nid > 127)
+            {
+                fmt::print(std::cerr, "Network input neurons must have an id <= 127 for uCaspian.\n");
+                fmt::print(std::cerr, "Input {} is neuron with id={}\n", i, nid);
+                net = nullptr;
+                return false;
+            }
+        }
+
         net = new_net;
         hw_state->configure(net);
 
@@ -497,6 +510,9 @@ namespace caspian
 
     double UsbCaspian::get_metric(const std::string& metric)
     {
+        return 0;
+
+        /// Temporary
         auto mit = metric_addrs.find(metric);
         if(mit == metric_addrs.end() || mit->second.empty())
         {

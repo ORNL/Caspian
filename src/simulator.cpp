@@ -133,7 +133,7 @@ namespace caspian
                 Synapse *syn = opair.second;
 
                 // schedule the event based on the current time plus any synaptic or axonal delay
-                uint64_t fire_idx = delay_bucket(net_time + syn->delay + n->delay + 1, dly_mask);
+                uint64_t fire_idx = delay_bucket(net_time + syn->delay + n->delay, dly_mask);
 
                 // add the fire event
                 fires[fire_idx].emplace_back(syn, opair.first);
@@ -152,8 +152,8 @@ namespace caspian
                 if(after_start)
                 {
                     int tag = (multi_net_sim) ? n->tag : 0;
-                    output_logs[tag].add_fire(n->output_id, net_time - run_start_time + 1, monitor_precise[n->output_id]);
-                    debug_print("output at t={:3d}", net_time - run_start_time + 1);
+                    output_logs[tag].add_fire(n->output_id, net_time - run_start_time, monitor_precise[n->output_id]);
+                    debug_print("output at t={:3d}", net_time - run_start_time);
                 }
             }
 
@@ -163,6 +163,15 @@ namespace caspian
 
     void Simulator::do_cycle()
     {
+        // check thresholds after all fires are processed for the timestep
+        for(size_t i = 0; i < thresh_check.size(); ++i)
+        {
+            threshold_check(thresh_check[i]);
+        }
+
+        // clear processed neurons all at once
+        thresh_check.clear();
+
         // process input fires
         while(!input_fires.empty() && input_fires.back().time == net_time)
         {
@@ -181,15 +190,6 @@ namespace caspian
 
         // clear processed events all at once
         fires[f_idx].clear();
-
-        // check thresholds after all fires are processed for the timestep
-        for(size_t i = 0; i < thresh_check.size(); ++i)
-        {
-            threshold_check(thresh_check[i]);
-        }
-
-        // clear processed neurons all at once
-        thresh_check.clear();
     }
 
     bool Simulator::configure(Network *n)

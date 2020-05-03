@@ -165,7 +165,6 @@ namespace caspian
         void step_sim(int clocks);
 
     protected: 
-        //virtual void send_and_read(std::vector<uint8_t> &buf, std::function<bool(void)> &&cond_func);
         virtual void send_and_read(std::vector<uint8_t> &buf, std::function<bool(HardwareState*)> &&cond_func);
 
         /* Verilator objects */

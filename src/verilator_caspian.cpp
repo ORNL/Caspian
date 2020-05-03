@@ -65,6 +65,7 @@ namespace caspian
         // finish reset sequence
         step_sim(1);
         impl->reset = 0;
+        step_sim(1);
 
         global_steps = 0;
     }
@@ -104,18 +105,6 @@ namespace caspian
         }
     }
 
-    /*
-    int VerilatorCaspian::rec_cmd(uint8_t *buf, int size)
-    {
-        int rec = 0;
-        for(uint8_t *buf_p = buf; buf_p < buf+size && !fifo_out->empty(); buf_p++) {
-            *buf_p = fifo_out->pop();
-            rec++;
-        }
-        return rec;
-    }
-    */
-
     std::vector<uint8_t> VerilatorCaspian::rec_cmd(int max_size)
     {
         std::vector<uint8_t> ret;
@@ -134,7 +123,7 @@ namespace caspian
 
         do
         {
-            step_sim(1000);
+            step_sim(250);
             std::vector<uint8_t> rec = rec_cmd(4096);
             hw_state->rec_leftover.insert(hw_state->rec_leftover.end(), rec.begin(), rec.end());
 
@@ -156,70 +145,6 @@ namespace caspian
         }
         while(!cond_func(hw_state.get()));
     }
-
-    /*
-    void VerilatorCaspian::send_and_read(uint8_t *buf, int size, std::function<bool(void)> &&cond_func)
-    {
-        const int rec_buf_sz = 4096;
-        static uint8_t rec_buf[rec_buf_sz];
-        static int rec_offset = 0;
-        int parsed_bytes = 0;
-        int rec_bytes = 0;
-        int exp_proc_bytes = 0;
-
-        // send commands by pushing to fifo
-        // TODO
-        for(int byte = 0; byte < size; byte++)
-        {
-            debug_print(" > PUSH {:2x}", buf[byte]);
-            fifo_in->push(buf[byte]);
-            debug_print(" -- OK\n");
-        }
-        debug_print("fifo_in: {} fifo_out: {}\n", fifo_in->size(), fifo_out->size());
-
-        int tries = 0;
-
-        do {
-            // step verilator forward
-            // TODO: how many clocks should it do?
-            step_sim(1000);
-
-            // zero buffer
-            memset(rec_buf + rec_offset, 0, rec_buf_sz - rec_offset);
-
-            // get output
-            rec_bytes = rec_cmd(rec_buf + rec_offset, rec_buf_sz - rec_offset);
-
-            // parse the buffer
-            exp_proc_bytes = rec_bytes + rec_offset;
-            parsed_bytes = parse_cmds(rec_buf, exp_proc_bytes);
-            
-            // determine if there are leftover bits to keep for next parse
-            if(parsed_bytes != exp_proc_bytes)
-            {
-                rec_offset = exp_proc_bytes - parsed_bytes;
-                memcpy(rec_buf, rec_buf + parsed_bytes, rec_offset);
-            }
-            else
-            {
-                rec_offset = 0;
-            }
-
-            if(m_debug)
-            {
-                fmt::print("[TIME: {}] Read {} bytes, Process {} bytes, offset {}\n", net_time, rec_bytes, parsed_bytes, rec_offset); 
-                fmt::print("fifo_in: {} fifo_out: {}\n", fifo_in->size(), fifo_out->size());
-                tries++;
-                if(tries > 32)
-                {
-                    if(m_trace) fst->close();
-                    throw std::runtime_error(" > No data output from the processor");
-                }
-            }
-
-        } while(!cond_func());
-    }
-    */
 
 }
 
