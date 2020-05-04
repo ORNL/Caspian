@@ -206,7 +206,7 @@ int main(int argc, char **argv)
         fmt::print("Using Simulator backend\n");
         sim = new Simulator();
     }
-    if(backend == "debug")
+    else if(backend == "debug")
     {
         fmt::print("Using Simulator backend\n");
         sim = new Simulator(true);
