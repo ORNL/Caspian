@@ -127,7 +127,8 @@ namespace caspian
             std::vector<uint8_t> rec = rec_cmd(4096);
             hw_state->rec_leftover.insert(hw_state->rec_leftover.end(), rec.begin(), rec.end());
 
-            int processed = hw_state->parse_cmds(hw_state->rec_leftover);
+            //int processed = hw_state->parse_cmds(hw_state->rec_leftover);
+            int processed = hw_state->parse_cmds_cond(hw_state->rec_leftover, cond_func);
 
             debug_print("[TIME: {}] Processed {} bytes ", hw_state->net_time, processed);
             

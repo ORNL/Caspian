@@ -42,6 +42,7 @@ namespace caspian
         void remove_network();
 
         /* process output */
+        int parse_cmds_cond(const std::vector<uint8_t> &buf, std::function<bool(HardwareState*)> &cond_func);
         int parse_cmds(const std::vector<uint8_t> &buf);
         int parse_cmd(const uint8_t *buf, int rem);
 

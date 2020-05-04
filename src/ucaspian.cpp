@@ -148,6 +148,23 @@ namespace caspian
         return std::vector<uint8_t>(buf, buf+bytes);
     }
 
+    int HardwareState::parse_cmds_cond(const std::vector<uint8_t> &buf, std::function<bool(HardwareState*)> &cond_func)
+    {
+        debug_print("Enter parse_cmds -- buf size: {}\n", buf.size());
+        int offset = 0;
+
+        while(offset < buf.size())
+        {
+            int rem = buf.size() - offset;
+            int inc = parse_cmd(&(buf[offset]), rem);
+            offset += inc;
+            if(inc == 0) break;
+            if(cond_func(this)) break;
+        }
+
+        return offset;
+    }
+
     int HardwareState::parse_cmds(const std::vector<uint8_t> &buf)
     {
         debug_print("Enter parse_cmds -- buf size: {}\n", buf.size());
@@ -267,18 +284,6 @@ namespace caspian
         std::vector<uint8_t> cfg_buf;
         int syn_cnt = 0;
 
-        // clear configuration
-        make_clear_config(cfg_buf);
-        debug_print("Preparing to send clear config...");
-        send_and_read(cfg_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
-        debug_print(" Clear ack'd\n");
-        cfg_buf.clear();
-
-        // clear fire tracking information
-        hw_state->monitor_aftertime.clear();
-        hw_state->monitor_precise.clear();
-        hw_state->output_logs.clear();
-
         if(new_net == nullptr)
         {
             net = nullptr;
@@ -309,6 +314,13 @@ namespace caspian
 
         net = new_net;
         hw_state->configure(net);
+
+        // clear configuration
+        make_clear_config(cfg_buf);
+        debug_print("Preparing to send clear config...");
+        send_and_read(cfg_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
+        debug_print(" Clear ack'd\n");
+        cfg_buf.clear();
 
         unsigned int elms_prog = 0;
 
@@ -420,7 +432,8 @@ namespace caspian
             std::vector<uint8_t> rec(cbuf, cbuf+bytes_read);
             hw->rec_leftover.insert(hw->rec_leftover.end(), rec.begin(), rec.end());
 
-            int processed = hw->parse_cmds(hw->rec_leftover);
+            //int processed = hw->parse_cmds(hw->rec_leftover);
+            int processed = hw->parse_cmds_cond(hw->rec_leftover, cond);
             processed_bytes.push_back(processed);
 
             hw->debug_print("[TIME: {}] Processed {} bytes ", hw->net_time, processed);
@@ -554,14 +567,13 @@ namespace caspian
 
         send_and_read(send_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
         
-        hw_state->net_time = 0;
-        hw_state->clr_acks = 0;
+        hw_state->clear_all();
         input_fires.clear();
 
         // clear fire tracking information
-        for(auto &a : hw_state->monitor_aftertime) a = -1;
-        for(auto &m : hw_state->output_logs) m.clear();
-        for(auto &&p : hw_state->monitor_precise) p = false;
+        //for(auto &a : hw_state->monitor_aftertime) a = -1;
+        //for(auto &m : hw_state->output_logs) m.clear();
+        //for(auto &&p : hw_state->monitor_precise) p = false;
     }
 
     void UsbCaspian::clear_activity()
@@ -572,12 +584,11 @@ namespace caspian
 
         send_and_read(send_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
 
-        hw_state->net_time = 0;
-        hw_state->clr_acks = 0;
+        hw_state->clear();
         input_fires.clear();
 
         // clear fire tracking information
-        for(auto &m : hw_state->output_logs) m.clear();
+        //for(auto &m : hw_state->output_logs) m.clear();
     }
 
     bool UsbCaspian::update()
@@ -625,18 +636,37 @@ namespace caspian
 
     void HardwareState::clear()
     {
+        net_time = 0;
+        run_start_time = 0;
+        clr_acks = 0;
+        cfg_acks = 0;
 
+        rec_leftover.clear();
+        rec_metrics.clear();
+
+        for(auto &m : output_logs) m.clear();
     }
 
     void HardwareState::clear_all()
     {
+        clear();
 
+        for(auto &a : monitor_aftertime) a = -1;
+        for(auto &&p : monitor_precise) p = false;
     }
 
     void HardwareState::remove_network()
     {
+        monitor_aftertime.clear();
+        monitor_precise.clear();
+        output_logs.clear();
+        rec_leftover.clear();
+        rec_metrics.clear();
         net = nullptr;
-        clear_all();
+        net_time = 0;
+        run_start_time = 0;
+        clr_acks = 0;
+        cfg_acks = 0;
     }
 
     void HardwareState::configure(Network *new_net)
@@ -646,6 +676,7 @@ namespace caspian
         monitor_aftertime.resize(net->num_outputs(), -1);
         monitor_precise.resize(net->num_outputs(), false);
         output_logs.emplace_back(net->num_outputs());
+        rec_leftover.clear();
 
         debug_print("[configure] outputs: {} ", net->num_outputs());
         debug_print(" monitor_aftertime: {} monitor_precise: {} output_logs {}\n", 
