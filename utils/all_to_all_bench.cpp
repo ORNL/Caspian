@@ -11,7 +11,7 @@
 
 using namespace caspian;
 
-void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int input_time)
+void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int input_time, bool use_delay)
 {
     auto rand_start = std::chrono::system_clock::now();
 
@@ -20,7 +20,7 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     const int max_delay = 15;
     std::mt19937 gen{seed};
     std::normal_distribution<> nd{0,1};
-    std::uniform_int_distribution<> ud(0, max_delay);
+    //std::uniform_int_distribution<> ud(0, max_delay);
 
     int n_neurons = inputs;
     uint64_t accumulations = 0;
@@ -35,8 +35,12 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     // Generate the network
     for(int i = 0; i < inputs; ++i)
     {
-        // Leak with tau=4
-        net.add_neuron(i, threshold, -1); //, 4);
+        int dd = std::round(nd(gen) * (max_delay/2));
+        int dly = std::max(0, std::min(max_delay, dd));
+
+        if(!use_delay) dly = 0;
+
+        net.add_neuron(i, threshold, -1, dly);
         net.set_input(i, i);
         net.set_output(i, i);
     }
@@ -47,7 +51,7 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
         {
             if(j == i) continue;
 
-            int wd = std::round(nd(gen) * threshold);
+            int wd = std::round(nd(gen) * (threshold/2));
             int w = std::max(-max_weight, std::min(max_weight, wd));
 
             //int dd = std::round(nd(gen) * 15);
@@ -64,6 +68,11 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     auto cfg_start = std::chrono::system_clock::now();
 
     sim->configure(&net);
+
+    for(int i = 0; i < inputs; i++)
+    {
+        sim->track_timing(i);
+    }
 
     auto cfg_end = std::chrono::system_clock::now();
 
@@ -115,6 +124,16 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
         fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
         sim_times.push_back(sim_time);
 
+        //
+        for(int i = 0; i < inputs; i++)
+        {
+            fmt::print("{:3d} ({:3d}):", i, sim->get_output_count(i));
+            auto vec = sim->get_output_values(i);
+            for(auto v : vec) fmt::print(" {}", v);
+            fmt::print("\n");
+        }
+        //
+
         sim->clear_activity();
     }
 
@@ -140,17 +159,18 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     fmt::print("Accumulations per second : {:.1f}\n", avg_accum / avg);
     fmt::print("Accumulations per step   : {:.1f}\n", avg_accum / runtime);
     fmt::print("Effective Clock Speed    : {:.4f} KHz\n", (static_cast<double>(runtime) / avg) / (1000) );
-    fmt::print("Output Counts:           : {:12d}\n", ocnts);
+    fmt::print("Output Counts            : {:12d}\n", ocnts);
 }
 
 int main(int argc, char **argv)
 {
     std::string backend;
     int inputs, runs, rt, seed, input_time;
+    bool use_delay;
 
     if(argc < 6)
     {
-        fmt::print("Usage: {} backend inputs n_runs runtime seed (input_time)\n", argv[0]);
+        fmt::print("Usage: {} backend inputs n_runs runtime seed (delay: Y|N) (input_time)\n", argv[0]);
         exit(1);
     }
 
@@ -159,10 +179,20 @@ int main(int argc, char **argv)
     runs = atoi(argv[3]);
     rt = atoi(argv[4]);
     seed = atoi(argv[5]);
+    use_delay = false;
 
     if(argc > 6)
     {
-        input_time = atoi(argv[6]);
+        if(argv[6][0] == 'Y')
+        {
+            use_delay = true;
+            fmt::print("Using axonal delay\n");
+        }
+    }
+
+    if(argc > 7)
+    {
+        input_time = atoi(argv[7]);
     }
     else
     {
@@ -176,16 +206,27 @@ int main(int argc, char **argv)
         fmt::print("Using Simulator backend\n");
         sim = new Simulator();
     }
+    if(backend == "debug")
+    {
+        fmt::print("Using Simulator backend\n");
+        sim = new Simulator(true);
+    }
     else if(backend == "ucaspian")
     {
         fmt::print("Using uCaspian backend\n");
-        sim = new UsbCaspian("/dev/ttyUSB0");
+        sim = new UsbCaspian(false, "/dev/ttyUSB0");
     }
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {
-        fmt::print("Using uCaspian Verilator backend");
+        fmt::print("Using uCaspian Verilator backend\n");
         sim = new VerilatorCaspian(false);
+        //sim = new VerilatorCaspian(false, "a2a.fst");
+    }
+    else if(backend == "verilator-log")
+    {
+        fmt::print("Using uCaspian Verilator backend - debug => a2a.fst\n");
+        sim = new VerilatorCaspian(false, "a2a.fst");
     }
 #endif
     else
@@ -194,7 +235,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    run_test(sim, inputs, runs, seed, rt, input_time);
+    run_test(sim, inputs, runs, seed, rt, input_time, use_delay);
 
     delete sim;
     return 0;
