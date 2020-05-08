@@ -36,15 +36,6 @@ namespace caspian
         { "total_timesteps",    {} }
     };
     
-    inline void print_hex(uint8_t *buf, int size)
-    {
-        for(uint8_t *bp = buf; bp < buf + size; bp += 2)
-        {
-            printf("%02x%02x ", bp[0], bp[1]);
-        }
-        printf("\n");
-    }
-
     inline void make_input_fire(std::vector<uint8_t>& buf, uint8_t id, uint8_t val)
     {
         uint8_t op = (1 << 7) | id;

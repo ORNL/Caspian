@@ -61,6 +61,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0)
 
     uint64_t accumulations = 0;
     uint64_t fires = 0;
+    uint64_t outputs = 0;
 
     for(int r = 0; r < runs; ++r)
     {
@@ -81,6 +82,12 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0)
 
         accumulations += sim->get_metric("accumulate_count");
         fires += sim->get_metric("fire_count");
+
+        for(int i = 0; i < h; ++i)
+        {
+            fmt::print("Output {}: {}\n", i, sim->get_output_count(i));
+            outputs += sim->get_output_count(i);
+        }
 
         sim->clear_activity();
     }
@@ -104,6 +111,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0)
     fmt::print("  > Fires/s:           {:.2f}\n", double(fires) / ttime); 
     fmt::print("  > Acumulations:      {}\n", accumulations);
     fmt::print("  > Accum/s:           {:.2f}\n", double(accumulations) / ttime); 
+    fmt::print("  > Outputs:           {}\n", outputs);
 
     fmt::print("Deconstruct Timings:\n");
     fmt::print("  > Network:           {:.2f} us\n", (free_netend - free_start).count() / 1000.0);
@@ -148,8 +156,15 @@ int main(int argc, char **argv)
     else if(backend == "ucaspian")
     {
         fmt::print("Using uCaspian backend\n");
-        sim = new UsbCaspian(true);
+        sim = new UsbCaspian(false);
     }
+#ifdef WITH_VERILATOR
+    else if(backend == "verilator")
+    {
+        fmt::print("Using uCaspian Verilator backend\n");
+        sim = new VerilatorCaspian(false);
+    }
+#endif
     else
     {
         fmt::print("Backend options: sim, ucaspian\n");
