@@ -37,7 +37,7 @@ void generate_pass(Network *net, int width, int height, int delay = 0)
     }
 }
 
-void run_test(Backend *sim, int w, int h, int runs, int runtime = 0)
+void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires = 1)
 {
     // Create simulator
     //Simulator *sim = new Simulator();
@@ -67,9 +67,13 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0)
     {
         auto sim_start = std::chrono::system_clock::now();
         // Queue up inputs
-        for(int i = 0; i < h; ++i)
+        for(int f = 0; f < ifires; ++f)
         {
-            sim->apply_input(i, 255, i);
+            for(int i = 0; i < h; ++i)
+            {
+                //sim->apply_input(i, 255, f+i);
+                sim->apply_input(i, 255, f*h+i);
+            }
         }
 
         // Simulate with sufficient time (intentionally extra)
@@ -126,10 +130,11 @@ int main(int argc, char **argv)
     int h = 2000;
     int runs = 3;
     int rt = 0;
+    int ifires = 1;
 
     if(argc < 5)
     {
-        fmt::print("Usage: {} backend width height n_runs (runtime)\n", argv[0]);
+        fmt::print("Usage: {} backend width height n_runs (runtime) (fires)\n", argv[0]);
         return -1;
     }
 
@@ -144,6 +149,11 @@ int main(int argc, char **argv)
     if(argc >= 6)
     {
         rt = atoi(argv[5]);
+    }
+
+    if(argc >= 7)
+    {
+        ifires = atoi(argv[6]);
     }
 
     Backend *sim = nullptr;
@@ -171,7 +181,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    run_test(sim, w, h, runs, rt);
+    run_test(sim, w, h, runs, rt, ifires);
 
     return 0;
 }

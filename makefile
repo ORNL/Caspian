@@ -37,8 +37,8 @@ PROJECT_DIR := $(dir $(MKFILE_PATH))
 
 # Compilation Flags
 CFLAGS ?= -Wall -Wextra -pipe -O3 -g
-CFLAGSBASE = $(CFLAGS) -std=c++14 -I$(INC) -I$(ROOT_INCLUDE)
-#CFLAGSBASE = $(CFLAGS) -std=c++11 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
+#CFLAGSBASE = $(CFLAGS) -std=c++14 -I$(INC) -I$(ROOT_INCLUDE)
+CFLAGSBASE = $(CFLAGS) -std=c++14 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
 LFLAGS = -lpthread -lz -lftdi1
 
 CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
@@ -107,7 +107,7 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) $(V_OBJECTS) | $(LIB)
 PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) -std=c++14 -flto=4 -fPIC -O3 -fvisibility=hidden
 PYBUILD_LFLAGS = -shared 
 
-PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
+PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -DWITH_VERILATOR
 
 # Patch symbol linkage issues for Mac OS
 OS := $(strip $(shell uname -s))
