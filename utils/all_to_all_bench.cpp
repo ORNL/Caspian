@@ -149,7 +149,7 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     double avg_fires = static_cast<double>(fire_cnt) / static_cast<double>(runs);
     double avg_accum = static_cast<double>(accumulations) / static_cast<double>(runs);
 
-    fmt::print("Average Simulate (s)     : {}\n", avg);
+    fmt::print("Average Simulate (s)     : {:10.7f}\n", avg);
     fmt::print("Median Simulate  (s)     : {}\n", sim_times[sim_times.size()/2].count());
     fmt::print("Input Fires              : {}\n", avg_input_fires);
     fmt::print("Fires                    : {}\n", avg_fires);

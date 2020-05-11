@@ -108,7 +108,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     auto free_netend = std::chrono::system_clock::now();
     delete sim;
     auto free_end = std::chrono::system_clock::now();
-    fmt::print("Average Simulate Time: {} s\n", avg);
+    fmt::print("Average Simulate Time: {}\n", avg);
 
     fmt::print("Simulation Stats:\n");
     fmt::print("  > Fires:             {}\n", fires);
