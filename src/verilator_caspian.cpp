@@ -119,6 +119,7 @@ namespace caspian
 
     void VerilatorCaspian::send_and_read(std::vector<uint8_t> &buf, std::function<bool(HardwareState*)> &&cond_func)
     {
+        unsigned nop_count = 0;
         fifo_in->push_vec(buf);
 
         do
@@ -127,8 +128,14 @@ namespace caspian
             std::vector<uint8_t> rec = rec_cmd(4096);
             hw_state->rec_leftover.insert(hw_state->rec_leftover.end(), rec.begin(), rec.end());
 
-            //int processed = hw_state->parse_cmds(hw_state->rec_leftover);
             int processed = hw_state->parse_cmds_cond(hw_state->rec_leftover, cond_func);
+
+            // keep track of if we get any data
+            if(processed == 0) nop_count++;
+            else nop_count = 0;
+
+            // break out if we think things are dead
+            if(nop_count > 1000) throw std::runtime_error("Simulation appears frozen");
 
             debug_print("[TIME: {}] Processed {} bytes ", hw_state->net_time, processed);
             
