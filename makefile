@@ -160,11 +160,9 @@ run_test: $(TEST_EXEC)
 
 #########################
 ## Utilities
-UTILITIES  = $(BIN)/benchmark \
+UTILITIES  = $(BIN)/pass_bench \
              $(BIN)/all_to_all_bench \
              $(BIN)/prune
-	     #$(BIN)/paper_bench \
-	     #$(BIN)/netop_bench \
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
 	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)

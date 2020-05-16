@@ -1,6 +1,7 @@
 #include "network.hpp"
 #include "simulator.hpp"
 #include "ucaspian.hpp"
+#include <memory>
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -19,10 +20,10 @@ void generate_pass(Network *net, int width, int height, int delay = 0)
     {
         for(int col = 0; col < width; ++col)
         {
-            net->add_neuron(idx(row,col), 1, 0);
+            net->add_neuron(idx(row,col), 1, -1, delay);
             if(col != 0)
             {
-                net->add_synapse(idx(row, col-1), idx(row,col), 127, delay);
+                net->add_synapse(idx(row, col-1), idx(row,col), 127, 0);
             }
 
             if(col == 0)
@@ -37,20 +38,18 @@ void generate_pass(Network *net, int width, int height, int delay = 0)
     }
 }
 
-void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires = 1)
+void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires = 1, int adly = 0)
 {
-    // Create simulator
-    //Simulator *sim = new Simulator();
-    Network *net = new Network(w*h);
-
+    auto net = std::make_unique<Network>(w*h);
     std::vector<std::chrono::duration<double>> sim_times;
 
     // Generate the pass network
-    generate_pass(net, w, h);
+    generate_pass(net.get(), w, h, adly);
 
     // Configure the simulator with the new network
     auto cfg_start = std::chrono::system_clock::now();
-    sim->configure(net);
+    sim->configure(net.get());
+    sim->track_timing(0);
 
     auto cfg_end = std::chrono::system_clock::now();
 
@@ -71,12 +70,11 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
         {
             for(int i = 0; i < h; ++i)
             {
-                //sim->apply_input(i, 255, f+i);
                 sim->apply_input(i, 255, f*h+i);
             }
         }
 
-        // Simulate with sufficient time (intentionally extra)
+        // Simulate with sufficient time
         sim->simulate(cycles);
         auto sim_end = std::chrono::system_clock::now();
 
@@ -89,7 +87,10 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
 
         for(int i = 0; i < h; ++i)
         {
-            fmt::print("Output {}: {}\n", i, sim->get_output_count(i));
+            fmt::print("Output {} ({}):", i, sim->get_output_count(i));
+            auto outs = sim->get_output_values(i);
+            for(auto o : outs) fmt::print(" {}", o);
+            fmt::print("\n");
             outputs += sim->get_output_count(i);
         }
 
@@ -102,12 +103,6 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     for(auto const &t : sim_times) ttime += t.count();
     double avg = ttime / sim_times.size();
 
-
-    auto free_start = std::chrono::system_clock::now();
-    delete net;
-    auto free_netend = std::chrono::system_clock::now();
-    delete sim;
-    auto free_end = std::chrono::system_clock::now();
     fmt::print("Average Simulate Time: {}\n", avg);
 
     fmt::print("Simulation Stats:\n");
@@ -116,25 +111,21 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     fmt::print("  > Acumulations:      {}\n", accumulations);
     fmt::print("  > Accum/s:           {:.2f}\n", double(accumulations) / ttime); 
     fmt::print("  > Outputs:           {}\n", outputs);
-
-    fmt::print("Deconstruct Timings:\n");
-    fmt::print("  > Network:           {:.2f} us\n", (free_netend - free_start).count() / 1000.0);
-    fmt::print("  > Simulator:         {:.2f} us\n", (free_end - free_netend).count() / 1000.0);
-    fmt::print("  Total:               {:.2f} us\n", (free_end - free_start).count() / 1000.0);
 }
 
 int main(int argc, char **argv)
 {
     std::string backend;
-    int w = 2000;
-    int h = 2000;
-    int runs = 3;
+    int w = 250;
+    int h = 1;
+    int runs = 1;
     int rt = 0;
     int ifires = 1;
+    int dly = 0;
 
     if(argc < 5)
     {
-        fmt::print("Usage: {} backend width height n_runs (runtime) (fires)\n", argv[0]);
+        fmt::print("Usage: {} backend width height n_runs (runtime) (fires) (delay)\n", argv[0]);
         return -1;
     }
 
@@ -156,23 +147,44 @@ int main(int argc, char **argv)
         ifires = atoi(argv[6]);
     }
 
-    Backend *sim = nullptr;
+    if(argc >= 8)
+    {
+        dly = atoi(argv[7]);
+    }
+
+    if(dly > 15)
+    {
+        fmt::print("Delay may not be greater than 15! Given {}\n", dly);
+        return -1;
+    }
+
+    std::unique_ptr<Backend> sim;
 
     if(backend == "sim")
     {
         fmt::print("Using Simulator backend\n");
-        sim = new Simulator();
+        sim = std::make_unique<Simulator>();
+    }
+    else if(backend == "debug")
+    {
+        fmt::print("Using Simulator backend\n");
+        sim = std::make_unique<Simulator>(true);
     }
     else if(backend == "ucaspian")
     {
         fmt::print("Using uCaspian backend\n");
-        sim = new UsbCaspian(false);
+        sim = std::make_unique<UsbCaspian>(false);
     }
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {
         fmt::print("Using uCaspian Verilator backend\n");
-        sim = new VerilatorCaspian(false);
+        sim = std::make_unique<VerilatorCaspian>(false);
+    }
+    else if(backend == "verilator-log")
+    {
+        fmt::print("Using uCaspian Verilator backend - debug => pass.fst\n");
+        sim = std::make_unique<VerilatorCaspian>(false, "pass.fst");
     }
 #endif
     else
@@ -181,7 +193,13 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    run_test(sim, w, h, runs, rt, ifires);
+    try {
+        run_test(sim.get(), w, h, runs, rt, ifires, dly);
+    }
+    catch(...)
+    {
+        fmt::print("There was an error completing the test.\n");
+    }
 
     return 0;
 }
