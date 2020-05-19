@@ -106,7 +106,7 @@ TEST_CASE("Simulation of a Straight Pass Network")
                 std::vector<uint32_t> times = sim->get_output_values(i);
                 CHECK(sim->get_output_count(i) == 1);
                 REQUIRE(times.size() == 1);
-                CHECK(times[0] == 2*(w-1)+i);
+                CHECK(times[0] == 2*(w-1)+i+1);
             }
 
             // Check metrics -- for this test, accumulate and fire will be the same
@@ -224,7 +224,7 @@ TEST_CASE("Synapses correctly delay fires in simulation")
         std::vector<uint32_t> out = sim.get_output_values(0);
         REQUIRE(out.size() == 10);
         for(int i = 0; i < 10; ++i)
-            CHECK(out.at(i) == 1+i+delay);
+            CHECK(out.at(i) == 1+i+delay+1);
 
         sim.reset();
     }
@@ -235,7 +235,7 @@ TEST_CASE("Check functionality of axon and synaptic delay used together")
     Simulator *sim = new Simulator();
     // format: syn delay, axon delay
     const std::vector<std::pair<int, int>> test_cases = { {0, 0}, {1, 0}, {0, 1}, {1, 1}, {15, 0}, {0, 15}, {15, 15} };
-    const std::vector<int> fire_time                  = {      1,      2,      2,      3,      16,      16,       31 };
+    const std::vector<int> fire_time                  = {      2,      3,      3,      4,      17,      17,       32 };
 
     for(size_t i = 0; i < test_cases.size(); ++i)
     {

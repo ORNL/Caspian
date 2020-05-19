@@ -39,7 +39,7 @@ TEST_CASE("Simulation of a Straight Pass Network")
 {
     const int h = 2;
     const int nt = 25;
-    const int stime = 41; 
+    const int stime = 42; 
 
     // Create simulator
     Simulator sim;
@@ -88,15 +88,15 @@ TEST_CASE("Simulation of a Straight Pass Network")
             else
             {
                 CHECK(sim.get_output_count(0, i) == 1);
-                CHECK(sim.get_last_output_time(0, i) == 2*(i+1));
+                CHECK(sim.get_last_output_time(0, i) == 2*(i+1)+1);
             }
         }
         else
         {
             CHECK(sim.get_output_count(0, i) == 1);
             CHECK(sim.get_output_count(1, i) == 1);
-            CHECK(sim.get_last_output_time(0, i) == 2*(i+1));
-            CHECK(sim.get_last_output_time(1, i) == 2*(i+1)+1);
+            CHECK(sim.get_last_output_time(0, i) == 2*(i+1)+1);
+            CHECK(sim.get_last_output_time(1, i) == 2*(i+1)+2);
         }
         CHECK(networks[i]->get_time() == stime);
     }
