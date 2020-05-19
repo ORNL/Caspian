@@ -3,7 +3,7 @@
 tst() {
     n="$1" #neurons
     s="$2" #seed
-    dl="N"
+    dl="Y"
     t="200"
     kw='Counts'
     a=`bin/all_to_all_bench sim $n 1 $t $s $dl | grep "$kw" - | cut -d ':' -f 2 | xargs`
