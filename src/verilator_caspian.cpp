@@ -135,7 +135,7 @@ namespace caspian
             else nop_count = 0;
 
             // break out if we think things are dead
-            if(nop_count > 4000) throw std::runtime_error("Simulation appears frozen");
+            if(nop_count > 25000) throw std::runtime_error("Simulation appears frozen");
 
             debug_print("[TIME: {}] Processed {} bytes ", hw_state->net_time, processed);
             
