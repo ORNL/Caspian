@@ -61,6 +61,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     uint64_t accumulations = 0;
     uint64_t fires = 0;
     uint64_t outputs = 0;
+    uint64_t active_cycles = 0;
 
     for(int r = 0; r < runs; ++r)
     {
@@ -84,6 +85,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
 
         accumulations += sim->get_metric("accumulate_count");
         fires += sim->get_metric("fire_count");
+        active_cycles += sim->get_metric("active_clock_cycles");
 
         for(int i = 0; i < h; ++i)
         {
@@ -103,14 +105,28 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     for(auto const &t : sim_times) ttime += t.count();
     double avg = ttime / sim_times.size();
 
-    fmt::print("Average Simulate Time: {}\n", avg);
+    double avg_accum = static_cast<double>(accumulations) / static_cast<double>(runs);
 
-    fmt::print("Simulation Stats:\n");
-    fmt::print("  > Fires:             {}\n", fires);
-    fmt::print("  > Fires/s:           {:.2f}\n", double(fires) / ttime); 
-    fmt::print("  > Acumulations:      {}\n", accumulations);
-    fmt::print("  > Accum/s:           {:.2f}\n", double(accumulations) / ttime); 
-    fmt::print("  > Outputs:           {}\n", outputs);
+    fmt::print("Average Simulate (s)     : {:9.7f}\n", avg);
+    fmt::print("Median Simulate  (s)     : {}\n", sim_times[sim_times.size()/2].count());
+    fmt::print("Fires                    : {}\n", fires);
+    fmt::print("Fires/second             : {}\n", static_cast<double>(fires) / ttime);
+    fmt::print("Accumulations            : {}\n", accumulations);
+    fmt::print("Accumulations/second     : {:.1f}\n", static_cast<double>(accumulations) / ttime);
+    fmt::print("Effective Speed (KHz)    : {:.4f}\n", (static_cast<double>(runtime) / avg) / (1000) );
+    fmt::print("Output Counts            : {}\n", outputs);
+
+    if(active_cycles != 0)
+    {
+        // This is dependent on the actual clock speed of the dev board.
+        // Here, we assume 25 MHz as the standard on the uCaspian rev0 board.
+        double adj_time = (static_cast<double>(active_cycles) / 25000000.0) / static_cast<double>(runs);
+        fmt::print("---[FPGA Metrics]-------------------\n");
+        fmt::print("Active Clock Cycles      : {}\n", active_cycles);
+        fmt::print("Adj Runtime (s)          : {:9.7f}\n", adj_time);
+        fmt::print("Adj Accumulations/second : {:.1f}\n", avg_accum / adj_time);
+        fmt::print("Adj Effective Speed (KHz): {:.4f}\n", (runtime / adj_time) / (1000) );
+    }
 }
 
 int main(int argc, char **argv)
@@ -189,7 +205,11 @@ int main(int argc, char **argv)
 #endif
     else
     {
-        fmt::print("Backend options: sim, ucaspian\n");
+#ifdef WITH_VERILATOR
+        fmt::print("Backend options: sim, debug, ucaspian, verilator, verilator-log\n");
+#else
+        fmt::print("Backend options: sim, debug, ucaspian\n");
+#endif
         return 0;
     }
 

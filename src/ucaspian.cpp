@@ -29,11 +29,10 @@ namespace caspian
     // TODO inline constexpr int sizeof_cfg_synapse_multi(int cnt) { return 5 + 2*cnt; }
     
     static const std::map<std::string, std::vector<uint8_t>> metric_addrs = {
-        { "fire_count",         {1, 2} },
-        { "accumulate_count",   {3, 4} },
-        { "depress_count",      {} },
-        { "potentiate_count",   {} },
-        { "total_timesteps",    {} }
+        { "fire_count",          {1, 2} },
+        { "accumulate_count",    {3, 4, 5, 6} },
+        { "active_clock_cycles", {7, 8, 9, 10} },
+        { "total_timesteps",     {} }
     };
     
     inline void make_input_fire(std::vector<uint8_t>& buf, uint8_t id, uint8_t val)
@@ -417,13 +416,12 @@ namespace caspian
 
         do
         {
-            const int rsz = 7936;
+            const int rsz = 15862;
             uint8_t cbuf[rsz];
             int bytes_read = ftdi_read_data(ftdi, cbuf, rsz);
             std::vector<uint8_t> rec(cbuf, cbuf+bytes_read);
             hw->rec_leftover.insert(hw->rec_leftover.end(), rec.begin(), rec.end());
 
-            //int processed = hw->parse_cmds(hw->rec_leftover);
             int processed = hw->parse_cmds_cond(hw->rec_leftover, cond);
             processed_bytes.push_back(processed);
 
@@ -475,12 +473,7 @@ namespace caspian
 
         while(buf.size() < 62) buf.push_back(0);
 
-        /*
-        debug_print(" < Async write of {} bytes.\n", buf.size());
-        struct ftdi_transfer_control *send_req = ftdi_write_data_submit(ftdi, buf.data(), buf.size());
-        */
-
-        const int block = 496;
+        const int block = 3961; // TODO: What should this be?
         int boff = 0;
         while(boff < buf.size())
         {
@@ -489,21 +482,10 @@ namespace caspian
             sends.push_back(ftdi_write_data_submit(ftdi, &(buf[boff]), sz));
             boff += sz;
         }
-        
 
-        /*
-        if(send_req == NULL)
-        {
-            throw std::runtime_error("FTDI write failed.");
-        }
-        */
-
-        //read_fn(ftdi, hw_state.get(), cond);
         reader.join();
 
-        // wait for send to complete -- which it probably has
-        //while(ftdi_transfer_data_done(send_req) > 0);
-        //int tr = ftdi_transfer_data_done(send_req);
+        // close out the transmit requests
         for(size_t i = 0; i < sends.size(); i++) ftdi_transfer_data_done(sends[i]);
     }
 
@@ -514,9 +496,6 @@ namespace caspian
 
     double UsbCaspian::get_metric(const std::string& metric)
     {
-        return 0;
-
-        /// Temporary
         auto mit = metric_addrs.find(metric);
         if(mit == metric_addrs.end() || mit->second.empty())
         {
@@ -530,7 +509,6 @@ namespace caspian
 
         for(auto addr = mit->second.begin(); addr != mit->second.end(); addr++)
         {
-            fmt::print("Get metric addr: {}\n", *addr);
             make_get_metric(buf, *addr);
         }
 
@@ -540,7 +518,7 @@ namespace caspian
 
         for(auto metric : hw_state->rec_metrics)
         {
-            fmt::print("Addr: {} Value: {}\n", metric.first, metric.second);
+            debug_print("[METRIC] Addr: {} Value: {}\n", metric.first, metric.second);
             val = val << 8;
             val |= metric.second;
         }
@@ -560,11 +538,6 @@ namespace caspian
         
         hw_state->clear_all();
         input_fires.clear();
-
-        // clear fire tracking information
-        //for(auto &a : hw_state->monitor_aftertime) a = -1;
-        //for(auto &m : hw_state->output_logs) m.clear();
-        //for(auto &&p : hw_state->monitor_precise) p = false;
     }
 
     void UsbCaspian::clear_activity()
@@ -577,9 +550,6 @@ namespace caspian
 
         hw_state->clear();
         input_fires.clear();
-
-        // clear fire tracking information
-        //for(auto &m : hw_state->output_logs) m.clear();
     }
 
     bool UsbCaspian::update()

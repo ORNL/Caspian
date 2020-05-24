@@ -11,7 +11,7 @@
 
 using namespace caspian;
 
-void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int input_time, bool use_delay)
+void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int input_time, bool use_delay, bool print_outputs)
 {
     auto rand_start = std::chrono::system_clock::now();
 
@@ -24,8 +24,8 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
 
     int n_neurons = inputs;
     uint64_t accumulations = 0;
-    uint64_t fire_cnt = 0;
     uint64_t input_fire_cnt = 0;
+    uint64_t active_cycles = 0;
 
     std::vector<std::chrono::duration<double>> sim_times;
     std::vector<long long> output_counts;
@@ -54,6 +54,7 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
             int wd = std::round(nd(gen) * (threshold/2));
             int w = std::max(-max_weight, std::min(max_weight, wd));
 
+            // NOTE: No synaptic delay for now!
             //int dd = std::round(nd(gen) * 15);
             //int dly = std::max(0, std::min(max_delay, dd));
             //int dly = ud(gen);
@@ -110,29 +111,28 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
         // Simulate with specified time
         sim->simulate(runtime);
         accumulations += sim->get_metric("accumulate_count");
-        fire_cnt += sim->get_metric("fire_count");
+        active_cycles += sim->get_metric("active_clock_cycles");
 
         int cnts = 0;
         for(int i = 0; i < inputs; ++i) cnts += sim->get_output_count(i);
         output_counts.push_back(cnts);
 
-        //accumulations += sim->get_metric_uint("accumulate_count");
-        //fire_cnt += sim->get_metric_uint("fire_count");
         auto sim_end = std::chrono::system_clock::now();
 
         std::chrono::duration<double> sim_time = sim_end - sim_start;
         fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
         sim_times.push_back(sim_time);
 
-        //
-        for(int i = 0; i < inputs; i++)
+        if(print_outputs)
         {
-            fmt::print("{:3d} ({:3d}):", i, sim->get_output_count(i));
-            auto vec = sim->get_output_values(i);
-            for(auto v : vec) fmt::print(" {}", v);
-            fmt::print("\n");
+            for(int i = 0; i < inputs; i++)
+            {
+                fmt::print("{:3d} ({:3d}):", i, sim->get_output_count(i));
+                auto vec = sim->get_output_values(i);
+                for(auto v : vec) fmt::print(" {}", v);
+                fmt::print("\n");
+            }
         }
-        //
 
         sim->clear_activity();
     }
@@ -146,40 +146,46 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     long long ocnts = std::accumulate(output_counts.begin(), output_counts.end(), 0);
 
     double avg_input_fires = static_cast<double>(input_fire_cnt) / static_cast<double>(runs);
-    double avg_fires = static_cast<double>(fire_cnt) / static_cast<double>(runs);
     double avg_accum = static_cast<double>(accumulations) / static_cast<double>(runs);
 
-    fmt::print("Average Simulate (s)     : {:10.7f}\n", avg);
+    fmt::print("Average Simulate (s)     : {:9.7f}\n", avg);
     fmt::print("Median Simulate  (s)     : {}\n", sim_times[sim_times.size()/2].count());
     fmt::print("Input Fires              : {}\n", avg_input_fires);
-    fmt::print("Fires                    : {}\n", avg_fires);
-    fmt::print("Fires per second         : {:.1f}\n", avg_fires / avg);
-    fmt::print("Fires per step           : {:.1f}\n", avg_fires / runtime);
     fmt::print("Accumulations            : {}\n", accumulations);
-    fmt::print("Accumulations per second : {:.1f}\n", avg_accum / avg);
-    fmt::print("Accumulations per step   : {:.1f}\n", avg_accum / runtime);
-    fmt::print("Effective Clock Speed    : {:.4f} KHz\n", (static_cast<double>(runtime) / avg) / (1000) );
-    fmt::print("Output Counts            : {:12d}\n", ocnts);
+    fmt::print("Accumulations/second     : {:.1f}\n", avg_accum / avg);
+    fmt::print("Accumulations/step       : {:.1f}\n", avg_accum / runtime);
+    fmt::print("Effective Speed (KHz)    : {:.4f}\n", (static_cast<double>(runtime) / avg) / (1000) );
+    fmt::print("Output Counts            : {}\n", ocnts);
+
+    if(active_cycles != 0)
+    {
+        // This is dependent on the actual clock speed of the dev board.
+        // Here, we assume 25 MHz as the standard on the uCaspian rev0 board.
+        double adj_time = (static_cast<double>(active_cycles) / 25000000.0) / static_cast<double>(runs);
+        fmt::print("---[FPGA Metrics]-------------------\n");
+        fmt::print("Active Clock Cycles      : {}\n", active_cycles);
+        fmt::print("Adj Runtime (s)          : {:9.7f}\n", adj_time);
+        fmt::print("Adj Accumulations/second : {:.1f}\n", avg_accum / adj_time);
+        fmt::print("Adj Effective Speed (KHz): {:.4f}\n", (runtime / adj_time) / (1000) );
+    }
 }
 
 int main(int argc, char **argv)
 {
-    std::string backend;
-    int inputs, runs, rt, seed, input_time;
-    bool use_delay;
-
     if(argc < 6)
     {
-        fmt::print("Usage: {} backend inputs n_runs runtime seed (delay: Y|N) (input_time)\n", argv[0]);
+        fmt::print("Usage: {} backend inputs n_runs runtime seed (delay: Y|N) (print_outputs: Y|N) (input_time)\n", argv[0]);
         exit(1);
     }
 
-    backend = argv[1];
-    inputs = atoi(argv[2]);
-    runs = atoi(argv[3]);
-    rt = atoi(argv[4]);
-    seed = atoi(argv[5]);
-    use_delay = false;
+    std::string backend = argv[1];
+    int inputs = atoi(argv[2]);
+    int runs = atoi(argv[3]);
+    int rt = atoi(argv[4]);
+    int seed = atoi(argv[5]);
+    bool use_delay = false;
+    bool print_outputs = false;
+    int input_time = rt;
 
     if(argc > 6)
     {
@@ -192,52 +198,58 @@ int main(int argc, char **argv)
 
     if(argc > 7)
     {
-        input_time = atoi(argv[7]);
-    }
-    else
-    {
-        input_time = rt;
+        if(argv[7][0] == 'Y')
+        {
+            print_outputs = true;
+        }
     }
 
-    Backend *sim = nullptr;
+    if(argc > 8)
+    {
+        input_time = atoi(argv[7]);
+    }
+
+    std::unique_ptr<Backend> sim;
 
     if(backend == "sim")
     {
         fmt::print("Using Simulator backend\n");
-        sim = new Simulator();
+        sim = std::make_unique<Simulator>();
     }
     else if(backend == "debug")
     {
         fmt::print("Using Simulator backend\n");
-        sim = new Simulator(true);
+        sim = std::make_unique<Simulator>(true);
     }
     else if(backend == "ucaspian")
     {
         fmt::print("Using uCaspian backend\n");
-        sim = new UsbCaspian(false, "/dev/ttyUSB0");
+        sim = std::make_unique<UsbCaspian>(false);
     }
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {
         fmt::print("Using uCaspian Verilator backend\n");
-        sim = new VerilatorCaspian(false);
-        //sim = new VerilatorCaspian(false, "a2a.fst");
+        sim = std::make_unique<VerilatorCaspian>(false);
     }
     else if(backend == "verilator-log")
     {
         fmt::print("Using uCaspian Verilator backend - debug => a2a.fst\n");
-        sim = new VerilatorCaspian(false, "a2a.fst");
+        sim = std::make_unique<VerilatorCaspian>(false, "a2a.fst");
     }
 #endif
     else
     {
-        fmt::print("Backend options: sim, ucaspian\n");
+#ifdef WITH_VERILATOR
+        fmt::print("Backend options: sim, debug, ucaspian, verilator, verilator-log\n");
+#else
+        fmt::print("Backend options: sim, debug, ucaspian\n");
+#endif
         return 0;
     }
 
-    run_test(sim, inputs, runs, seed, rt, input_time, use_delay);
+    run_test(sim.get(), inputs, runs, seed, rt, input_time, use_delay, print_outputs);
 
-    delete sim;
     return 0;
 }
 

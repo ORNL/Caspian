@@ -117,7 +117,7 @@ namespace caspian
             // increment count of fires
             metric_fires++;
 
-            debug_print("[t={:3d}] > FIRE {:2d} charge: {:4d}", net_time, n->id, n->charge);
+            debug_print("[t={:4d}] > FIRE {:3d} charge: {:6d}", net_time, n->id, n->charge);
 
             // reset charge after firing (soft reset => charge - threshold, hard reset => 0)
             n->charge = (soft_reset) ? n->charge - n->threshold : 0;
@@ -153,7 +153,7 @@ namespace caspian
                 {
                     int tag = (multi_net_sim) ? n->tag : 0;
                     output_logs[tag].add_fire(n->output_id, net_time - run_start_time, monitor_precise[n->output_id]);
-                    debug_print(" + output at {:3d}", net_time - run_start_time);
+                    debug_print(" + output at {:4d}", net_time - run_start_time);
                 }
             }
 
@@ -358,18 +358,14 @@ namespace caspian
             m = metric_accumulates;
             metric_accumulates = 0;
         }
-        else if(metric == "depress_count")
-        {
-            m = 0;
-        }
-        else if(metric == "potentiate_count")
-        {
-            m = 0;
-        }
         else if(metric == "total_timesteps")
         {
             m = metric_timesteps;
             metric_timesteps = 0;
+        }
+        else if(metric == "active_clock_cycles")
+        {
+            m = 0;
         }
         else
         {
