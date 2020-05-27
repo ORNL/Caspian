@@ -148,14 +148,16 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     double avg_input_fires = static_cast<double>(input_fire_cnt) / static_cast<double>(runs);
     double avg_accum = static_cast<double>(accumulations) / static_cast<double>(runs);
 
+    fmt::print("\n");
+    fmt::print("---[Metrics]------------------------\n");
     fmt::print("Average Simulate (s)     : {:9.7f}\n", avg);
-    fmt::print("Median Simulate  (s)     : {}\n", sim_times[sim_times.size()/2].count());
-    fmt::print("Input Fires              : {}\n", avg_input_fires);
+    fmt::print("Median Simulate  (s)     : {:9.7f}\n", sim_times[sim_times.size()/2].count());
+    fmt::print("Input Spikes             : {}\n", avg_input_fires);
+    fmt::print("Output Spikes            : {}\n", ocnts);
     fmt::print("Accumulations            : {}\n", accumulations);
     fmt::print("Accumulations/second     : {:.1f}\n", avg_accum / avg);
     fmt::print("Accumulations/step       : {:.1f}\n", avg_accum / runtime);
     fmt::print("Effective Speed (KHz)    : {:.4f}\n", (static_cast<double>(runtime) / avg) / (1000) );
-    fmt::print("Output Counts            : {}\n", ocnts);
 
     if(active_cycles != 0)
     {
@@ -206,7 +208,7 @@ int main(int argc, char **argv)
 
     if(argc > 8)
     {
-        input_time = atoi(argv[7]);
+        input_time = atoi(argv[8]);
     }
 
     std::unique_ptr<Backend> sim;

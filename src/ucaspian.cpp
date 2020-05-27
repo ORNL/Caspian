@@ -29,9 +29,9 @@ namespace caspian
     // TODO inline constexpr int sizeof_cfg_synapse_multi(int cnt) { return 5 + 2*cnt; }
     
     static const std::map<std::string, std::vector<uint8_t>> metric_addrs = {
-        { "fire_count",          {1, 2} },
-        { "accumulate_count",    {3, 4, 5, 6} },
-        { "active_clock_cycles", {7, 8, 9, 10} },
+        { "fire_count",          {1, 2, 3, 4} },
+        { "accumulate_count",    {5, 6, 7, 8} },
+        { "active_clock_cycles", {9, 10, 11, 12} },
         { "total_timesteps",     {} }
     };
     

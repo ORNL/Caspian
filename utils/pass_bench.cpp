@@ -49,7 +49,9 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     // Configure the simulator with the new network
     auto cfg_start = std::chrono::system_clock::now();
     sim->configure(net.get());
-    sim->track_timing(0);
+
+    for(int i = 0; i < net->num_outputs(); i++)
+        sim->track_timing(i);
 
     auto cfg_end = std::chrono::system_clock::now();
 
@@ -107,14 +109,16 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
 
     double avg_accum = static_cast<double>(accumulations) / static_cast<double>(runs);
 
+    fmt::print("\n");
+    fmt::print("---[Metrics]------------------------\n");
     fmt::print("Average Simulate (s)     : {:9.7f}\n", avg);
-    fmt::print("Median Simulate  (s)     : {}\n", sim_times[sim_times.size()/2].count());
-    fmt::print("Fires                    : {}\n", fires);
-    fmt::print("Fires/second             : {}\n", static_cast<double>(fires) / ttime);
+    fmt::print("Median Simulate  (s)     : {:9.7f}\n", sim_times[sim_times.size()/2].count());
+    fmt::print("Spikes                   : {}\n", fires);
+    fmt::print("Spikes/second            : {}\n", static_cast<double>(fires) / ttime);
+    fmt::print("Output Spikes            : {}\n", outputs);
     fmt::print("Accumulations            : {}\n", accumulations);
     fmt::print("Accumulations/second     : {:.1f}\n", static_cast<double>(accumulations) / ttime);
     fmt::print("Effective Speed (KHz)    : {:.4f}\n", (static_cast<double>(runtime) / avg) / (1000) );
-    fmt::print("Output Counts            : {}\n", outputs);
 
     if(active_cycles != 0)
     {
