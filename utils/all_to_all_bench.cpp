@@ -110,14 +110,15 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
 
         // Simulate with specified time
         sim->simulate(runtime);
-        accumulations += sim->get_metric("accumulate_count");
-        active_cycles += sim->get_metric("active_clock_cycles");
 
         int cnts = 0;
         for(int i = 0; i < inputs; ++i) cnts += sim->get_output_count(i);
         output_counts.push_back(cnts);
 
         auto sim_end = std::chrono::system_clock::now();
+
+        accumulations += sim->get_metric("accumulate_count");
+        active_cycles += sim->get_metric("active_clock_cycles");
 
         std::chrono::duration<double> sim_time = sim_end - sim_start;
         fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
