@@ -12,22 +12,13 @@
 #include "constants.hpp"
 
 #define OUTPUT_FIRE (128)
-#define CFG_ACK     (112)
-#define CLR_ACK      (12)
+#define CFG_ACK      (24)
+#define CLR_ACK       (4)
 #define METRIC_RESP   (2)
 #define TIME_UPDATE   (1)
 
 namespace caspian
 {
-    /* packet functions */
-    inline constexpr int sizeof_input_fire()     { return 2; }
-    inline constexpr int sizeof_step()           { return 2; }
-    inline constexpr int sizeof_get_metric()     { return 2; }
-    inline constexpr int sizeof_clear()          { return 1; }
-    inline constexpr int sizeof_cfg_neuron()     { return 7; }
-    inline constexpr int sizeof_cfg_synapse()    { return 5; }
-    // TODO inline constexpr int sizeof_cfg_synapse_multi(int cnt) { return 5 + 2*cnt; }
-    
     static const std::map<std::string, std::vector<uint8_t>> metric_addrs = {
         { "fire_count",          {1, 2, 3, 4} },
         { "accumulate_count",    {5, 6, 7, 8} },
@@ -58,7 +49,7 @@ namespace caspian
 
     inline void make_clear_config(std::vector<uint8_t>& buf)
     {
-        buf.push_back(8);
+        buf.push_back(5);
     }
 
     inline void make_cfg_neuron(std::vector<uint8_t>& buf, uint8_t addr, uint8_t threshold, 
@@ -70,7 +61,7 @@ namespace caspian
         uint8_t syn_0 = (syn_start >> 8) & 0x0F;
         uint8_t syn_1 = syn_start & 0xFF;
 
-        buf.insert(buf.end(), {16, addr, threshold, dly_and_flg, syn_0, syn_1, syn_cnt});
+        buf.insert(buf.end(), {8, addr, threshold, dly_and_flg, syn_0, syn_1, syn_cnt});
     }
 
     inline void make_cfg_synapse(std::vector<uint8_t>& buf, uint16_t addr, int8_t weight, uint8_t target)
@@ -78,7 +69,7 @@ namespace caspian
         uint8_t addr_0 = (addr >> 8) & 0x0F;
         uint8_t addr_1 = addr & 0x00FF;
 
-        buf.insert(buf.end(), {32, addr_0, addr_1, static_cast<uint8_t>(weight), target});
+        buf.insert(buf.end(), {16, addr_0, addr_1, static_cast<uint8_t>(weight), target});
     }
 
     UsbCaspian::UsbCaspian(bool debug, std::string device)
@@ -99,6 +90,8 @@ namespace caspian
             }
 
             // attempt to open the device with the given vendor/device id
+            // Mimas 2a19:1009
+            //if((ret = ftdi_usb_open(ftdi, 0x2a19, 0x1009)) < 0)
             if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6010)) < 0)
             {
                 const char *ftdi_err = ftdi_get_error_string(ftdi);
