@@ -18,7 +18,7 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     const int max_weight = 127;
     const int threshold = 100;
     const int max_delay = 15;
-    std::mt19937 gen{seed};
+    std::mt19937 gen{static_cast<uint64_t>(seed)};
     std::normal_distribution<> nd{0,1};
     std::uniform_real_distribution<double> conn_dist(0.0,1.0); 
     //std::uniform_int_distribution<> ud(0, max_delay);
