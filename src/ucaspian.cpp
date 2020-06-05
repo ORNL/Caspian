@@ -471,7 +471,7 @@ namespace caspian
         while(boff < buf.size())
         {
             int sz = std::min(int(buf.size()-boff), block);
-            debug_print(" < Async write of {} bytes -- offset: {} -- total: {}", sz, boff, buf.size());
+            debug_print(" < Async write of {} bytes -- offset: {} -- total: {}\n", sz, boff, buf.size());
             sends.push_back(ftdi_write_data_submit(ftdi, &(buf[boff]), sz));
             boff += sz;
         }

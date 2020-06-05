@@ -11,7 +11,7 @@
 
 using namespace caspian;
 
-void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int input_time, bool use_delay, bool print_outputs)
+void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int input_time, int conn_p, bool use_delay, bool print_outputs)
 {
     auto rand_start = std::chrono::system_clock::now();
 
@@ -20,7 +20,10 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     const int max_delay = 15;
     std::mt19937 gen{seed};
     std::normal_distribution<> nd{0,1};
+    std::uniform_real_distribution<double> conn_dist(0.0,1.0); 
     //std::uniform_int_distribution<> ud(0, max_delay);
+    
+    double conn = static_cast<double>(conn_p) / 100.0;
 
     int n_neurons = inputs;
     uint64_t accumulations = 0;
@@ -50,6 +53,9 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
         for(int j = 0; j < inputs; ++j)
         {
             if(j == i) continue;
+
+            // check if connected
+            if(conn_dist(gen) > conn) continue;
 
             int wd = std::round(nd(gen) * (threshold/2));
             int w = std::max(-max_weight, std::min(max_weight, wd));
@@ -163,8 +169,9 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     if(active_cycles != 0)
     {
         // This is dependent on the actual clock speed of the dev board.
-        // Here, we assume 25 MHz as the standard on the uCaspian rev0 board.
-        double adj_time = (static_cast<double>(active_cycles) / 25000000.0) / static_cast<double>(runs);
+        const double clk_speed = 25000000;
+        //const double clk_speed = 150000000; // previously 25000000
+        double adj_time = (static_cast<double>(active_cycles) / clk_speed) / static_cast<double>(runs);
         fmt::print("---[FPGA Metrics]-------------------\n");
         fmt::print("Active Clock Cycles      : {}\n", active_cycles);
         fmt::print("Adj Runtime (s)          : {:9.7f}\n", adj_time);
@@ -177,8 +184,8 @@ int main(int argc, char **argv)
 {
     if(argc < 6)
     {
-        fmt::print("Usage: {} backend inputs n_runs runtime seed (delay: Y|N) (print_outputs: Y|N) (input_time)\n", argv[0]);
-        exit(1);
+        fmt::print("Usage: {} backend inputs n_runs runtime seed (delay: Y|N) (print_outputs: Y|N) (input_time) (percent connectivity)\n", argv[0]);
+        return -1;
     }
 
     std::string backend = argv[1];
@@ -189,6 +196,7 @@ int main(int argc, char **argv)
     bool use_delay = false;
     bool print_outputs = false;
     int input_time = rt;
+    int conn_p = 100;
 
     if(argc > 6)
     {
@@ -212,6 +220,17 @@ int main(int argc, char **argv)
         input_time = atoi(argv[8]);
     }
 
+    if(argc > 9)
+    {
+        conn_p = atoi(argv[9]);
+
+        if(conn_p == 0) 
+        {
+            fmt::print("Connectivity percentage must be greater an integer greater than 0!\n");
+            return -1;
+        }
+    }
+
     std::unique_ptr<Backend> sim;
 
     if(backend == "sim")
@@ -219,7 +238,7 @@ int main(int argc, char **argv)
         fmt::print("Using Simulator backend\n");
         sim = std::make_unique<Simulator>();
     }
-    else if(backend == "debug")
+    else if(backend == "sim-debug")
     {
         fmt::print("Using Simulator backend\n");
         sim = std::make_unique<Simulator>(true);
@@ -228,6 +247,11 @@ int main(int argc, char **argv)
     {
         fmt::print("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(false);
+    }
+    else if(backend == "ucaspian-debug")
+    {
+        fmt::print("Using uCaspian backend\n");
+        sim = std::make_unique<UsbCaspian>(true);
     }
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
@@ -238,20 +262,26 @@ int main(int argc, char **argv)
     else if(backend == "verilator-log")
     {
         fmt::print("Using uCaspian Verilator backend - debug => a2a.fst\n");
-        sim = std::make_unique<VerilatorCaspian>(false, "a2a.fst");
+        sim = std::make_unique<VerilatorCaspian>(true, "a2a.fst");
     }
 #endif
     else
     {
 #ifdef WITH_VERILATOR
-        fmt::print("Backend options: sim, debug, ucaspian, verilator, verilator-log\n");
+        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug, verilator, verilator-log\n");
 #else
-        fmt::print("Backend options: sim, debug, ucaspian\n");
+        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug\n");
 #endif
         return 0;
     }
 
-    run_test(sim.get(), inputs, runs, seed, rt, input_time, use_delay, print_outputs);
+    try {
+        run_test(sim.get(), inputs, runs, seed, rt, input_time, conn_p, use_delay, print_outputs);
+    }
+    catch(...)
+    {
+        fmt::print("There was an error completing the test.\n");
+    }
 
     return 0;
 }

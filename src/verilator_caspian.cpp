@@ -124,7 +124,8 @@ namespace caspian
 
         do
         {
-            step_sim(250);
+            //step_sim(250);
+            step_sim(1000);
             std::vector<uint8_t> rec = rec_cmd(4096);
             hw_state->rec_leftover.insert(hw_state->rec_leftover.end(), rec.begin(), rec.end());
 
@@ -135,7 +136,8 @@ namespace caspian
             else nop_count = 0;
 
             // break out if we think things are dead
-            if(nop_count > 25000) throw std::runtime_error("Simulation appears frozen");
+            //if(nop_count > 25000) throw std::runtime_error("Simulation appears frozen");
+            if(nop_count > 100) throw std::runtime_error("Simulation appears frozen");
 
             debug_print("[TIME: {}] Processed {} bytes ", hw_state->net_time, processed);
             

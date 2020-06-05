@@ -2,7 +2,7 @@
 
 tst() {
     n="$1" #neurons
-    dl="N"
+    dl="Y"
     t="1000"
     rs="5"
     kw='Average Simulate'
@@ -11,8 +11,9 @@ tst() {
 
     for s in {0..4}
     do
-        x=`bin/all_to_all_bench sim $n $rs $t $s | grep "$kw" - | cut -d ':' -f 2 | xargs`
-        y=`bin/all_to_all_bench ucaspian $n $rs $t $s | grep "$kw" - | cut -d ':' -f 2 | xargs`
+        x=`bin/all_to_all_bench sim $n $rs $t $s $dl | grep "$kw" - | cut -d ':' -f 2 | xargs`
+        #y=`bin/all_to_all_bench ucaspian $n $rs $t $s $dl | grep "$kw" - | cut -d ':' -f 2 | xargs`
+        y=`bin/all_to_all_bench ucaspian $n $rs $t $s $dl | grep "Adj Runtime" - | cut -d ':' -f 2 | xargs`
         
         a=`echo "$a+$x" | bc -l`
         b=`echo "$b+$y" | bc -l`

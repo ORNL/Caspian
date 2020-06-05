@@ -6,7 +6,7 @@ tst() {
     t=`expr $n + 1000`
     f="1000"
     rs="5"
-    kw='Simulate Time'
+    kw='Average Simulate'
     a=`bin/pass_bench sim $n 1 $rs $t $f | grep "$kw" - | cut -d ':' -f 2 | xargs`
     b=`bin/pass_bench ucaspian $n 1 $rs $t $f | grep "$kw" - | cut -d ':' -f 2 | xargs`
 

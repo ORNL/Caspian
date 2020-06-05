@@ -123,8 +123,9 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     if(active_cycles != 0)
     {
         // This is dependent on the actual clock speed of the dev board.
-        // Here, we assume 25 MHz as the standard on the uCaspian rev0 board.
-        double adj_time = (static_cast<double>(active_cycles) / 25000000.0) / static_cast<double>(runs);
+        const double clk_speed = 25000000;
+        //const double clk_speed = 150000000; // previously 25000000
+        double adj_time = (static_cast<double>(active_cycles) / clk_speed) / static_cast<double>(runs);
         fmt::print("---[FPGA Metrics]-------------------\n");
         fmt::print("Active Clock Cycles      : {}\n", active_cycles);
         fmt::print("Adj Runtime (s)          : {:9.7f}\n", adj_time);
@@ -195,6 +196,11 @@ int main(int argc, char **argv)
         fmt::print("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(false);
     }
+    else if(backend == "ucaspian-debug")
+    {
+        fmt::print("Using uCaspian backend\n");
+        sim = std::make_unique<UsbCaspian>(true);
+    }
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {
@@ -210,9 +216,9 @@ int main(int argc, char **argv)
     else
     {
 #ifdef WITH_VERILATOR
-        fmt::print("Backend options: sim, debug, ucaspian, verilator, verilator-log\n");
+        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug, verilator, verilator-log\n");
 #else
-        fmt::print("Backend options: sim, debug, ucaspian\n");
+        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug\n");
 #endif
         return 0;
     }

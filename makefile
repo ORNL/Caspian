@@ -27,6 +27,7 @@ PYBINDINGS = bindings
 PYBUILD = build
 PYBUILD_BINDINGS = $(PYBUILD)/bindings
 PYBUILD_SUFFIX := $(shell python3-config --extension-suffix)
+VCASPIAN ?= false
 
 # Framework Directories
 ROOT          = ..
@@ -37,11 +38,13 @@ PROJECT_DIR := $(dir $(MKFILE_PATH))
 
 # Compilation Flags
 CFLAGS ?= -Wall -Wextra -pipe -O3 -g
-#CFLAGSBASE = $(CFLAGS) -std=c++14 -I$(INC) -I$(ROOT_INCLUDE)
-CFLAGSBASE = $(CFLAGS) -std=c++14 -I$(INC) -I$(ROOT_INCLUDE) -DWITH_VERILATOR
+CFLAGSBASE = $(CFLAGS) -std=c++14 -I$(INC) -I$(ROOT_INCLUDE)
 LFLAGS = -lpthread -lz -lftdi1
 
-CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
+ifeq ($(VCASPIAN),true)
+    CFLAGSBASE += -DWITH_VERILATOR
+    CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
+endif
 
 ## Targets
 .PHONY: all clean test run_test python utils
@@ -81,16 +84,23 @@ TL_HEADERS  = $(INC)/processor.hpp \
 
 SOURCES     = $(SRC)/network.cpp \
 	      $(SRC)/simulator.cpp \
-	      $(SRC)/ucaspian.cpp \
-	      $(SRC)/verilator_caspian.cpp
+	      $(SRC)/ucaspian.cpp
 
 TL_SOURCES  = $(SRC)/processor.cpp \
               $(SRC)/network_conversion.cpp
 
+ifeq ($(VCASPIAN),true)
+    SOURCES += $(SRC)/verilator_caspian.cpp
+endif
+
 OBJECTS    := $(patsubst $(SRC)/%.cpp,$(OBJ)/%.o,$(SOURCES))
 TL_OBJECTS := $(patsubst $(SRC)/%.cpp,$(OBJ)/%.o,$(TL_SOURCES))
 
-V_OBJECTS := $(wildcard ucaspian/vout/V*.o) ucaspian/vout/verilated.o ucaspian/vout/verilated_fst_c.o
+ifeq ($(VCASPIAN),true)
+    V_OBJECTS := $(wildcard ucaspian/vout/V*.o) ucaspian/vout/verilated.o ucaspian/vout/verilated_fst_c.o
+endif
+
+#V_OBJECTS := $(wildcard ucaspian/vout/V*.o) ucaspian/vout/verilated.o ucaspian/vout/verilated_fst_c.o
 
 $(OBJECTS): $(OBJ)/%.o : $(SRC)/%.cpp $(HEADERS) | $(OBJ)
 	$(CXX) $(CFLAGSBASE) -c $< -o $@
@@ -104,10 +114,12 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) $(V_OBJECTS) | $(LIB)
 
 #########################
 ## Python support
-PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) -std=c++14 -flto=4 -fPIC -O3 -fvisibility=hidden
+PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) -std=c++14 -flto -fPIC -O3 -fvisibility=hidden
 PYBUILD_LFLAGS = -shared 
 
-PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -DWITH_VERILATOR
+ifeq ($(VCASPIAN),true)
+    PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -DWITH_VERILATOR
+endif
 
 # Patch symbol linkage issues for Mac OS
 OS := $(strip $(shell uname -s))
