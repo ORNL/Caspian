@@ -156,6 +156,9 @@ namespace caspian
         std::vector<uint32_t> get_output_values(uint32_t output_id, int network_id = 0);
 
         void set_debug(bool debug);
+
+        void collect_all_spikes(bool collect = true); 
+        std::vector<std::vector<uint32_t>> get_all_spikes(); 
     };
 
 #ifdef WITH_VERILATOR

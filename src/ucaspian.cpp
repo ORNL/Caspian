@@ -674,6 +674,15 @@ namespace caspian
 
         return output_logs[network_id].recorded_fires[output_id];
     }
+    
+    void UsbCaspian::collect_all_spikes(bool /*collect*/)
+    {
+    }
+
+    std::vector<std::vector<uint32_t>> UsbCaspian::get_all_spikes()
+    {
+        return {};
+    }
 
 }
 

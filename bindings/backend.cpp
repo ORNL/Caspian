@@ -82,6 +82,9 @@ void bind_backend(py::module &m) {
 
         }, py::arg("x"), py::arg("y"), py::arg("p"), py::arg("t"), py::arg("dims"), py::arg("use_polarity") = true)
 
+        .def("collect_all_spikes", &csp::Backend::collect_all_spikes, py::arg("collect") = true)
+        .def("get_all_spikes", &csp::Backend::get_all_spikes)
+
         .def("configure", &csp::Backend::configure)
         .def("configure_multi", &csp::Backend::configure_multi)
         .def("simulate", &csp::Backend::simulate)
@@ -142,6 +145,7 @@ void bind_backend(py::module &m) {
         .def("clear_config", [](csp::UsbCaspian &sim) {
             return sim.configure(nullptr);
         })
+
 
         .def("spike_data", [](csp::UsbCaspian &sim) {
             std::vector<int> times, ids;

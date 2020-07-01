@@ -69,6 +69,9 @@ namespace caspian
 
         virtual void set_debug(bool debug) = 0;
 
+        virtual void collect_all_spikes(bool collect = true) = 0; 
+        virtual std::vector<std::vector<uint32_t>> get_all_spikes() = 0; 
+
         virtual ~Backend() = default;
     };
 
