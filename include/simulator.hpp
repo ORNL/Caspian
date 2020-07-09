@@ -6,6 +6,7 @@
 #include <fstream>
 #include <stdexcept>
 #include "fmt/format.h"
+#include "robinhood/robin_map.h"
 
 #include "network.hpp"
 #include "backend.hpp"
@@ -71,7 +72,6 @@ namespace caspian
     class Simulator : public Backend
     {
     protected:
-
         /* processes a selected fire event */
         void process_fire(const FireEvent &e) noexcept;
         void process_fire(const InputFireEvent &e);
@@ -113,6 +113,7 @@ namespace caspian
 
         /* hacked up spike raster */
         std::vector<std::vector<uint32_t>> all_spikes;
+        UIntMap all_spike_cnts;
 
         /* stores the currently loaded network */
         std::vector<Network*> nets; // if multiple are loaded, all are here -- first is also stored in *net
@@ -185,7 +186,8 @@ namespace caspian
         void set_debug(bool debug);
 
         void collect_all_spikes(bool collect = true); 
-        std::vector<std::vector<uint32_t>> get_all_spikes(); 
+        std::vector<std::vector<uint32_t>> get_all_spikes();
+        UIntMap get_all_spike_cnts();
     };
 }
 

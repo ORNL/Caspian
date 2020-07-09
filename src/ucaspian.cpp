@@ -684,6 +684,11 @@ namespace caspian
         return {};
     }
 
+    UsbCaspian::UIntMap UsbCaspian::get_all_spike_cnts()
+    {
+        return {};
+    }
+
 }
 
 #undef CFG_ACK

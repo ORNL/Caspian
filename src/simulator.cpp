@@ -120,7 +120,11 @@ namespace caspian
             debug_print("[t={:4d}] > FIRE {:3d} charge: {:6d}", net_time, n->id, n->charge);
 
             // optionally, collect every spike
-            if(collect_all) all_spikes.back().push_back(n->id);
+            if(collect_all) 
+            {
+                all_spikes.back().push_back(n->id);
+                all_spike_cnts[n->id]++;
+            }
 
             // reset charge after firing (soft reset => charge - threshold, hard reset => 0)
             n->charge = (soft_reset) ? n->charge - n->threshold : 0;
@@ -211,6 +215,7 @@ namespace caspian
         monitor_precise.clear();
         output_logs.clear();
         all_spikes.clear();
+        all_spike_cnts.clear();
 
         // clear internal fires
         for(auto &&f : fires)
@@ -311,6 +316,7 @@ namespace caspian
         end_time = run_start_time + steps;
 
         all_spikes.clear();
+        all_spike_cnts.clear();
 
         // ok, not a strictly event-based system for now
         for(net_time = run_start_time; net_time < end_time; ++net_time)
@@ -390,6 +396,7 @@ namespace caspian
         input_fires.clear();
         thresh_check.clear();
         all_spikes.clear();
+        all_spike_cnts.clear();
 
         for(Network *n : nets)
             n->reset();
@@ -411,6 +418,7 @@ namespace caspian
         input_fires.clear();
         thresh_check.clear();
         all_spikes.clear();
+        all_spike_cnts.clear();
 
         for(Network *n : nets)
             n->clear_activity();
@@ -468,6 +476,11 @@ namespace caspian
     std::vector<std::vector<uint32_t>> Simulator::get_all_spikes()
     {
         return all_spikes;
+    }
+
+    Simulator::UIntMap Simulator::get_all_spike_cnts()
+    {
+        return all_spike_cnts;
     }
 
     Simulator::Simulator(bool debug)

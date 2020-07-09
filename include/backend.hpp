@@ -46,6 +46,8 @@ namespace caspian
     class Backend
     {
     public:
+        using UIntMap = tsl::robin_map<uint64_t, uint64_t>;
+
         virtual bool configure(Network *network) = 0;
         virtual bool configure_multi(std::vector<Network*> &networks) = 0;
         virtual Network* pull_network(uint32_t idx) const = 0;
@@ -70,7 +72,8 @@ namespace caspian
         virtual void set_debug(bool debug) = 0;
 
         virtual void collect_all_spikes(bool collect = true) = 0; 
-        virtual std::vector<std::vector<uint32_t>> get_all_spikes() = 0; 
+        virtual std::vector<std::vector<uint32_t>> get_all_spikes() = 0;
+        virtual UIntMap get_all_spike_cnts() = 0;
 
         virtual ~Backend() = default;
     };

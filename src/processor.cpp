@@ -392,4 +392,33 @@ namespace caspian
         return jconfig;
     }
 
+    void Processor::track_spikes()
+    {
+        dev->collect_all_spikes();
+    }
+
+    void Processor::get_spike_counts(nlohmann::json& data)
+    {
+        // Not necessarily efficient
+        auto sp_cnts = dev->get_all_spike_cnts();
+        std::vector<int> cnts;
+        std::vector<int> neurons;
+
+        for(auto const s : sp_cnts)
+        {
+            neurons.push_back(s.first);
+            cnts.push_back(s.second);
+        }
+        
+        data["Event Counts"] = cnts;
+        data["Neuron Alias"] = neurons;
+    }
+
+    void Processor::get_spike_raster(nlohmann::json& data)
+    {
+        // TODO
+        data["Event Raster"] = nlohmann::json::array();
+        data["Neuron Alias"] = nlohmann::json::array();
+    }
+
 }

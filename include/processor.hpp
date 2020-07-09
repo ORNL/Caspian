@@ -57,6 +57,11 @@ namespace caspian
 
         neuro::PropertyPack get_properties();
 
+        /* Added for TENNLab viz */
+        void track_spikes();
+        void get_spike_counts(nlohmann::json& data);
+        void get_spike_raster(nlohmann::json& data);
+
         /*** ADDED METHODS ***/
         caspian::Network* get_internal_network(int network_id = 0) const;
         json get_configuration() const;

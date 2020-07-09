@@ -158,7 +158,8 @@ namespace caspian
         void set_debug(bool debug);
 
         void collect_all_spikes(bool collect = true); 
-        std::vector<std::vector<uint32_t>> get_all_spikes(); 
+        std::vector<std::vector<uint32_t>> get_all_spikes();
+        UIntMap get_all_spike_cnts();
     };
 
 #ifdef WITH_VERILATOR
