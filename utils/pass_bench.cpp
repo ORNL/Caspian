@@ -50,7 +50,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     auto cfg_start = std::chrono::system_clock::now();
     sim->configure(net.get());
 
-    for(int i = 0; i < net->num_outputs(); i++)
+    for(size_t i = 0; i < net->num_outputs(); i++)
         sim->track_timing(i);
 
     auto cfg_end = std::chrono::system_clock::now();
@@ -191,6 +191,7 @@ int main(int argc, char **argv)
         fmt::print("Using Simulator backend\n");
         sim = std::make_unique<Simulator>(true);
     }
+#ifdef WITH_USB
     else if(backend == "ucaspian")
     {
         fmt::print("Using uCaspian backend\n");
@@ -201,6 +202,7 @@ int main(int argc, char **argv)
         fmt::print("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(true);
     }
+#endif
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {

@@ -1,3 +1,4 @@
+#ifdef WITH_SUB
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
@@ -696,3 +697,4 @@ namespace caspian
 #undef METRIC_RESP
 #undef TIME_UPDATE
 #undef OUTPUT_FIRE
+#endif

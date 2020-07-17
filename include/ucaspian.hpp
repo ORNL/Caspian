@@ -5,8 +5,11 @@
 #include <queue>
 #include <fstream>
 #include <memory>
-#include <libftdi1/ftdi.h>
 #include "fmt/format.h"
+
+#ifdef WITH_USB
+#include <libftdi1/ftdi.h>
+#endif
 
 #ifdef WITH_VERILATOR
 #include "Vucaspian.h"
@@ -23,6 +26,7 @@
 namespace caspian
 {
     
+#ifdef WITH_USB
     class HardwareState
     {
     public:
@@ -161,6 +165,7 @@ namespace caspian
         std::vector<std::vector<uint32_t>> get_all_spikes();
         UIntMap get_all_spike_cnts();
     };
+#endif
 
 #ifdef WITH_VERILATOR
     class VerilatorCaspian : public UsbCaspian

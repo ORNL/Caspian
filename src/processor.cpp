@@ -67,6 +67,7 @@ namespace caspian
         {
             dev = new Simulator(debug);
         }
+#ifdef WITH_USB
         else if(jconfig["Backend"] == "uCaspian_USB")
         {
             // Synaptic delay is not supported on this platform
@@ -77,6 +78,7 @@ namespace caspian
             fmt::print("Open uCaspian device\n");
             dev = new UsbCaspian(debug);
         }
+#endif
 #ifdef WITH_VERILATOR
         else if(jconfig["Backend"] == "uCaspian_Verilator")
         {

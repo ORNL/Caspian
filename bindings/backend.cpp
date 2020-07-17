@@ -139,6 +139,7 @@ void bind_backend(py::module &m) {
             return std::make_pair(times, ids);
         });
 
+#ifdef WITH_USB
     py::class_<csp::UsbCaspian, csp::Backend>(m, "UsbCaspian")
         .def(py::init<bool>(), py::arg("debug") = false)
 
@@ -162,5 +163,6 @@ void bind_backend(py::module &m) {
 
             return std::make_pair(times, ids);
         });
+#endif
         
 }

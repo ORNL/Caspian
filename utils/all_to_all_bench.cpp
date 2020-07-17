@@ -243,6 +243,7 @@ int main(int argc, char **argv)
         fmt::print("Using Simulator backend\n");
         sim = std::make_unique<Simulator>(true);
     }
+#ifdef WITH_USB
     else if(backend == "ucaspian")
     {
         fmt::print("Using uCaspian backend\n");
@@ -253,6 +254,7 @@ int main(int argc, char **argv)
         fmt::print("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(true);
     }
+#endif
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {
