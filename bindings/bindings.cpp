@@ -15,6 +15,7 @@ namespace csp = caspian;
 void bind_network(py::module &m);
 void bind_backend(py::module &m);
 void bind_processor(py::module &m);
+void bind_fast_infer(py::module &m);
 
 PYBIND11_MODULE(caspian, m) {
     m.doc() = "CASPIAN for Python";
@@ -30,6 +31,8 @@ PYBIND11_MODULE(caspian, m) {
 
     /* Framework Processor interface */
     bind_processor(m);
+
+    bind_fast_infer(m);
     
     /* SpikeEncoder utility class */
     /*

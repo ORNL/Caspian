@@ -146,7 +146,8 @@ python: $(PYLIBCASPIAN)
 BINDING_SOURCES := $(PYBINDINGS)/backend.cpp \
                    $(PYBINDINGS)/network.cpp \
 		   $(PYBINDINGS)/bindings.cpp \
-		   $(PYBINDINGS)/processor.cpp
+		   $(PYBINDINGS)/processor.cpp \
+		   $(PYBINDINGS)/fast_infer.cpp
 
 BINDING_OBJECTS := $(patsubst $(PYBINDINGS)/%.cpp,$(PYBUILD_BINDINGS)/%.o,$(BINDING_SOURCES))
 

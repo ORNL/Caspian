@@ -34,7 +34,7 @@ namespace caspian
     using neuro::Spike;
     using neuro::Property;
 
-    Processor::Processor(json& j)
+    Processor::Processor(const json& j)
     {
         // Default configuration
         jconfig = {

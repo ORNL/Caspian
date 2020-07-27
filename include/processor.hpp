@@ -18,7 +18,7 @@ namespace caspian
     class Processor : public neuro::Processor 
     {
     public:
-        Processor(json &j);
+        Processor(const json &j);
         ~Processor();
 
         // TODO: unique_ptr, shared_ptr, or raw pointer?
