@@ -8,11 +8,28 @@
 
 #include <vector>
 #include <thread>
+#include <memory>
 
 using namespace neuro;
 namespace py = pybind11;
 
 using moodycamel::ConcurrentQueue;
+
+struct WorkerData
+{
+    WorkerData(std::vector<Network*>& networks_, const nlohmann::json &config_, int steps_) : 
+        networks(networks_), processor_config(config_), num_steps(steps_)
+    {
+        results.resize(networks.size());
+    }
+
+    ConcurrentQueue<size_t> queue;
+    std::vector<Network*>& networks;
+    std::vector<std::vector<Spike>> encoded_data;
+    std::vector<std::vector<int>> results;
+    const nlohmann::json& processor_config;
+    int num_steps;
+};
 
 void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spike>>& spikes, int num_steps, std::vector<int>& ret)
 {
@@ -25,7 +42,7 @@ void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spik
         // Apply spikes and simulate
         p.apply_spikes(spikes[sample]);
         p.run(num_steps);
-        
+
         // Gather results
         int idx = 0, cnt = 0;
         for(size_t oid = 0; oid < net->num_outputs(); oid++)
@@ -44,31 +61,21 @@ void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spik
     }
 }
 
-void pool_worker(size_t thread_id, ConcurrentQueue<size_t>& work_queue, const nlohmann::json &j, std::vector<Network*> &networks, 
-        std::vector<std::vector<Spike>>& spikes, int num_steps, std::vector<std::vector<int>> &ret)
+void pool_worker(WorkerData *info)
 {
     size_t id;
-
-    while(true)
+    while(info->queue.try_dequeue(id))
     {
-        if(!work_queue.try_dequeue(id)) 
-        {
-            //fmt::print("[Thread {:3d}] Done.\n", thread_id);
-            return;
-        }
-        //fmt::print("[Thread {:3d}] Predict {:4d}\n", thread_id, id);
-        predict(j, networks[id], spikes, num_steps, ret[id]);
+        predict(info->processor_config, info->networks[id], info->encoded_data, info->num_steps, info->results[id]);
     }
 }
 
-std::vector<std::vector<int>> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder, 
+std::vector<std::vector<int>> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder,
         std::vector<Network*> networks, py::array_t<double>data, int num_steps, int num_threads)
 {
-    ConcurrentQueue<size_t> work_queue(networks.size());
-    std::vector<std::vector<int>> ret(networks.size());
+    auto info = std::make_unique<WorkerData>(networks, j, num_steps);
 
     // Encode into spikes
-    std::vector<std::vector<Spike>> encoded;
     auto d = data.unchecked<2>();
 
     std::vector<double> dp(d.shape(1));
@@ -79,36 +86,34 @@ std::vector<std::vector<int>> predict_all_pool(const nlohmann::json &j, EncoderA
             dp[k] = d(i, k);
         }
 
-        encoded.push_back(encoder->get_spikes(dp));
+        info->encoded_data.push_back(encoder->get_spikes(dp));
     }
 
     // Fill queue
     for(size_t i = 0; i < networks.size(); i++)
     {
-        work_queue.enqueue(i);
+        info->queue.enqueue(i);
     }
 
     // Launch worker threads
     std::vector<std::thread> threads;
     for(size_t i = 0; i < num_threads; i++)
     {
-        threads.emplace_back(pool_worker, i, std::ref(work_queue), std::ref(j), std::ref(networks), std::ref(encoded), num_steps, std::ref(ret));
+        threads.emplace_back(pool_worker, info.get());
     }
 
-    // Wait for completion 
+    // Wait for completion
     for(size_t i = 0; i < threads.size(); i++)
     {
         threads[i].join();
     }
 
-    //fmt::print(">>>All Threads Joined.<<<\n");
-
-    return ret;
+    return info->results;
 }
 
 void bind_fast_infer(py::module &m)
 {
     m.def("fast_predict_all", &predict_all_pool,
-            py::arg("proc_config"), py::arg("encoder"), py::arg("networks"), 
+            py::arg("proc_config"), py::arg("encoder"), py::arg("networks"),
             py::arg("data"), py::arg("num_steps"), py::arg("num_threads") = 4);
 }
