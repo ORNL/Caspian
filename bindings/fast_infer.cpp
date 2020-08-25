@@ -9,6 +9,7 @@
 #include <vector>
 #include <thread>
 #include <memory>
+#include <chrono>
 
 using namespace neuro;
 namespace py = pybind11;
@@ -20,18 +21,19 @@ struct WorkerData
     WorkerData(std::vector<Network*>& networks_, const nlohmann::json &config_, int steps_) : 
         networks(networks_), processor_config(config_), num_steps(steps_)
     {
-        results.resize(networks.size());
+        //results.resize(networks.size());
     }
 
     ConcurrentQueue<size_t> queue;
     std::vector<Network*>& networks;
     std::vector<std::vector<Spike>> encoded_data;
-    std::vector<std::vector<int>> results;
+    //std::vector<std::vector<int>> results;
     const nlohmann::json& processor_config;
+    int * results; // 2-d array
     int num_steps;
 };
 
-void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spike>>& spikes, int num_steps, std::vector<int>& ret)
+void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spike>>& spikes, int num_steps, int* ret)
 {
     auto p = caspian::Processor(j);
 
@@ -54,7 +56,7 @@ void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spik
                 cnt = c;
             }
         }
-        ret.push_back(idx);
+        ret[sample] = idx;
 
         // Clear before next sample
         p.clear_activity();
@@ -66,14 +68,22 @@ void pool_worker(WorkerData *info)
     size_t id;
     while(info->queue.try_dequeue(id))
     {
-        predict(info->processor_config, info->networks[id], info->encoded_data, info->num_steps, info->results[id]);
+        predict(info->processor_config, 
+                info->networks[id], 
+                info->encoded_data, 
+                info->num_steps, 
+                &(info->results[id * info->encoded_data.size()]));
     }
 }
 
-std::vector<std::vector<int>> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder,
+//std::vector<std::vector<int>>
+py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder,
         std::vector<Network*> networks, py::array_t<double>data, int num_steps, int num_threads)
 {
     auto info = std::make_unique<WorkerData>(networks, j, num_steps);
+
+
+    //auto t_start = std::chrono::system_clock::now();
 
     // Encode into spikes
     auto d = data.unchecked<2>();
@@ -88,6 +98,19 @@ std::vector<std::vector<int>> predict_all_pool(const nlohmann::json &j, EncoderA
 
         info->encoded_data.push_back(encoder->get_spikes(dp));
     }
+
+    //auto t_encode = std::chrono::system_clock::now();
+
+    // Allocate results array
+    const int results_size = networks.size() * info->encoded_data.size();
+    info->results = new int[results_size];
+
+    py::capsule free_when_done(info->results, [](void *f) {
+        int *ptr = reinterpret_cast<int *>(f);
+        delete[] ptr;
+    });
+
+    //auto t_res = std::chrono::system_clock::now();
 
     // Fill queue
     for(size_t i = 0; i < networks.size(); i++)
@@ -108,8 +131,22 @@ std::vector<std::vector<int>> predict_all_pool(const nlohmann::json &j, EncoderA
         threads[i].join();
     }
 
-    return info->results;
+    //auto t_eval = std::chrono::system_clock::now();
+
+    //std::chrono::duration<double> total_time = t_eval - t_start;
+    //std::chrono::duration<double> encode_time = t_encode - t_start;
+    //std::chrono::duration<double> allocate_time = t_res - t_encode;
+    //std::chrono::duration<double> eval_time = t_eval - t_res;
+    //fmt::print(" [Timing Data] Total: {:5.2f} Encode: {:6.3f} Allocate: {:6.3f} Eval: {:6.3f}\n",
+    //        total_time.count(), encode_time.count(), allocate_time.count(), eval_time.count());
+
+    return py::array_t<int>(
+        {networks.size(), info->encoded_data.size()}, // shape
+        {sizeof(int) * info->encoded_data.size(), sizeof(int)}, // strides
+        info->results, // data ptr
+        free_when_done); // deallocator object
 }
+
 
 void bind_fast_infer(py::module &m)
 {
