@@ -21,15 +21,18 @@ struct WorkerData
     WorkerData(std::vector<Network*>& networks_, const nlohmann::json &config_, int steps_) : 
         networks(networks_), processor_config(config_), num_steps(steps_)
     {
-        //results.resize(networks.size());
+        results = nullptr;
+        scores = nullptr;
+        actual = nullptr;
     }
 
     ConcurrentQueue<size_t> queue;
     std::vector<Network*>& networks;
     std::vector<std::vector<Spike>> encoded_data;
-    //std::vector<std::vector<int>> results;
     const nlohmann::json& processor_config;
+    std::vector<int>* actual; // labels
     int * results; // 2-d array
+    double * scores; // 1-d array of accuracies
     int num_steps;
 };
 
@@ -63,28 +66,47 @@ void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spik
     }
 }
 
+void score(int *predictions, std::vector<int>& y, size_t num, double *score)
+{
+    size_t correct = 0;
+
+    if(y.size() != num)
+    {
+        *score = 0;
+        return;
+    }
+
+    for(size_t i = 0; i < num; i++)
+        if(predictions[i] == y[i]) correct++;
+
+    *score = static_cast<double>(correct) / static_cast<double>(num);
+}
+
 void pool_worker(WorkerData *info)
 {
     size_t id;
+    size_t r_stride = info->encoded_data.size();
+
     while(info->queue.try_dequeue(id))
     {
         predict(info->processor_config, 
                 info->networks[id], 
                 info->encoded_data, 
                 info->num_steps, 
-                &(info->results[id * info->encoded_data.size()]));
+                &(info->results[id * r_stride]));
+
+        if(info->scores != nullptr)
+        {
+            score(&(info->results[id * r_stride]),
+                  *(info->actual),
+                  info->encoded_data.size(),
+                  &(info->scores[id]));
+        }
     }
 }
 
-//std::vector<std::vector<int>>
-py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder,
-        std::vector<Network*> networks, py::array_t<double>data, int num_steps, int num_threads)
+void encode(WorkerData *info, py::array_t<double>& data, EncoderArray *encoder)
 {
-    auto info = std::make_unique<WorkerData>(networks, j, num_steps);
-
-
-    //auto t_start = std::chrono::system_clock::now();
-
     // Encode into spikes
     auto d = data.unchecked<2>();
 
@@ -98,8 +120,65 @@ py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder
 
         info->encoded_data.push_back(encoder->get_spikes(dp));
     }
+}
 
-    //auto t_encode = std::chrono::system_clock::now();
+void run_pool(WorkerData *info, int num_threads)
+{
+    // Fill queue
+    for(size_t i = 0; i < info->networks.size(); i++)
+    {
+        info->queue.enqueue(i);
+    }
+
+    // Launch worker threads
+    std::vector<std::thread> threads;
+    for(size_t i = 0; i < num_threads; i++)
+    {
+        threads.emplace_back(pool_worker, info);
+    }
+
+    // Wait for completion
+    for(size_t i = 0; i < threads.size(); i++)
+    {
+        threads[i].join();
+    }
+}
+
+py::array_t<double> score_all_pool(const nlohmann::json &j, EncoderArray *encoder,
+        std::vector<Network*> networks, py::array_t<double>data, std::vector<int> y, int num_steps, int num_threads)
+{
+    auto info = std::make_unique<WorkerData>(networks, j, num_steps);
+
+    encode(info.get(), data, encoder);
+
+    // Allocate results array
+    const int results_size = networks.size() * info->encoded_data.size();
+    info->results = new int[results_size];
+    info->scores = new double[networks.size()];
+    info->actual = &y;
+
+    py::capsule free_when_done(info->scores, [](void *f) {
+        double *ptr = reinterpret_cast<double *>(f);
+        delete[] ptr;
+    });
+
+    run_pool(info.get(), num_threads);
+
+    delete[] info->results;
+
+    return py::array_t<double>(
+        {networks.size()}, // shape
+        {sizeof(double)}, // strides
+        info->scores, // data ptr
+        free_when_done); // deallocator object
+}
+
+py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder,
+        std::vector<Network*> networks, py::array_t<double>data, int num_steps, int num_threads)
+{
+    auto info = std::make_unique<WorkerData>(networks, j, num_steps);
+
+    encode(info.get(), data, encoder);
 
     // Allocate results array
     const int results_size = networks.size() * info->encoded_data.size();
@@ -110,35 +189,7 @@ py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder
         delete[] ptr;
     });
 
-    //auto t_res = std::chrono::system_clock::now();
-
-    // Fill queue
-    for(size_t i = 0; i < networks.size(); i++)
-    {
-        info->queue.enqueue(i);
-    }
-
-    // Launch worker threads
-    std::vector<std::thread> threads;
-    for(size_t i = 0; i < num_threads; i++)
-    {
-        threads.emplace_back(pool_worker, info.get());
-    }
-
-    // Wait for completion
-    for(size_t i = 0; i < threads.size(); i++)
-    {
-        threads[i].join();
-    }
-
-    //auto t_eval = std::chrono::system_clock::now();
-
-    //std::chrono::duration<double> total_time = t_eval - t_start;
-    //std::chrono::duration<double> encode_time = t_encode - t_start;
-    //std::chrono::duration<double> allocate_time = t_res - t_encode;
-    //std::chrono::duration<double> eval_time = t_eval - t_res;
-    //fmt::print(" [Timing Data] Total: {:5.2f} Encode: {:6.3f} Allocate: {:6.3f} Eval: {:6.3f}\n",
-    //        total_time.count(), encode_time.count(), allocate_time.count(), eval_time.count());
+    run_pool(info.get(), num_threads);
 
     return py::array_t<int>(
         {networks.size(), info->encoded_data.size()}, // shape
@@ -150,7 +201,11 @@ py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder
 
 void bind_fast_infer(py::module &m)
 {
-    m.def("fast_predict_all", &predict_all_pool,
+    m.def("fast_predict", &predict_all_pool,
             py::arg("proc_config"), py::arg("encoder"), py::arg("networks"),
             py::arg("data"), py::arg("num_steps"), py::arg("num_threads") = 4);
+
+    m.def("fast_accuracy", &score_all_pool,
+            py::arg("proc_config"), py::arg("encoder"), py::arg("networks"),
+            py::arg("data"), py::arg("y"), py::arg("num_steps"), py::arg("num_threads") = 4);
 }
