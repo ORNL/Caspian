@@ -1,3 +1,17 @@
+/**
+ * Fast inference for basic classification tasks
+ *
+ * This implements functions and Python bindings to allow
+ * fast batched inference for basic classification tasks.
+ * A key advantage is the use of C++ worker threads and 
+ * minimizing the amount of data copied. The speed up over
+ * the typical Python way can easily be 3-5x.
+ *
+ * Note: This code currently is designed to only work with Caspian.
+ *
+ */
+
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
@@ -26,22 +40,24 @@ struct WorkerData
         actual = nullptr;
     }
 
-    ConcurrentQueue<size_t> queue;
-    std::vector<Network*>& networks;
-    std::vector<std::vector<Spike>> encoded_data;
-    const nlohmann::json& processor_config;
-    std::vector<int>* actual; // labels
-    int * results; // 2-d array
-    double * scores; // 1-d array of accuracies
-    int num_steps;
+    ConcurrentQueue<size_t> queue; // queue of network ids to process
+    std::vector<Network*>& networks; // reference to a listing of networks to process
+    std::vector<std::vector<Spike>> encoded_data; // only encode data once and allow all threads to read
+    const nlohmann::json& processor_config; // 
+    std::vector<int> *actual; // labels
+    int *results; // 2-d array of prediction results
+    double *scores; // 1-d array of accuracies
+    int num_steps; // number of timesteps for each sample
 };
 
 void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spike>>& spikes, int num_steps, int* ret)
 {
+    // Right now, this creates a new processor for each network. This could probably be created once per thread instead.
     auto p = caspian::Processor(j);
 
     p.load_network(net);
 
+    // Predict each sample by iterating through the encoded data vector (spikes)
     for(size_t sample = 0; sample < spikes.size(); sample++)
     {
         // Apply spikes and simulate
@@ -59,6 +75,8 @@ void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spik
                 cnt = c;
             }
         }
+
+        // Currently just doing argmax of spike count. In the future, this should accept a decoder object.
         ret[sample] = idx;
 
         // Clear before next sample
@@ -70,15 +88,18 @@ void score(int *predictions, std::vector<int>& y, size_t num, double *score)
 {
     size_t correct = 0;
 
+    // sanity check
     if(y.size() != num)
     {
         *score = 0;
         return;
     }
 
+    // count how many correct predictions the network made
     for(size_t i = 0; i < num; i++)
         if(predictions[i] == y[i]) correct++;
 
+    // set the score to be the accuracy percentage
     *score = static_cast<double>(correct) / static_cast<double>(num);
 }
 
@@ -87,6 +108,7 @@ void pool_worker(WorkerData *info)
     size_t id;
     size_t r_stride = info->encoded_data.size();
 
+    // keep popping network ids off the queue until everything is processed
     while(info->queue.try_dequeue(id))
     {
         predict(info->processor_config, 
@@ -113,6 +135,7 @@ void encode(WorkerData *info, py::array_t<double>& data, EncoderArray *encoder)
     std::vector<double> dp(d.shape(1));
     for(size_t i = 0; i < d.shape(0); i++)
     {
+        // Right now, the data must be copied into a vector piece by piece to pass to the encoder
         for(size_t k = 0; k < d.shape(1); k++)
         {
             dp[k] = d(i, k);
@@ -149,6 +172,7 @@ py::array_t<double> score_all_pool(const nlohmann::json &j, EncoderArray *encode
 {
     auto info = std::make_unique<WorkerData>(networks, j, num_steps);
 
+    // encode all the data to spikes
     encode(info.get(), data, encoder);
 
     // Allocate results array
@@ -157,6 +181,8 @@ py::array_t<double> score_all_pool(const nlohmann::json &j, EncoderArray *encode
     info->scores = new double[networks.size()];
     info->actual = &y;
 
+    // The accuracy scores will be returned as a Python buffer to avoid a copy, so 
+    // we need to tell Python how to deallocate the buffer when done
     py::capsule free_when_done(info->scores, [](void *f) {
         double *ptr = reinterpret_cast<double *>(f);
         delete[] ptr;
@@ -164,8 +190,10 @@ py::array_t<double> score_all_pool(const nlohmann::json &j, EncoderArray *encode
 
     run_pool(info.get(), num_threads);
 
+    // delete the results; we don't need them
     delete[] info->results;
 
+    // return buffer of the scores (basically like a numpy array)
     return py::array_t<double>(
         {networks.size()}, // shape
         {sizeof(double)}, // strides
@@ -178,6 +206,7 @@ py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder
 {
     auto info = std::make_unique<WorkerData>(networks, j, num_steps);
 
+    // encode all the data to spikes
     encode(info.get(), data, encoder);
 
     // Allocate results array
@@ -191,6 +220,7 @@ py::array_t<int> predict_all_pool(const nlohmann::json &j, EncoderArray *encoder
 
     run_pool(info.get(), num_threads);
 
+    // return buffer of the predictions (basically like a numpy ndarray)
     return py::array_t<int>(
         {networks.size(), info->encoded_data.size()}, // shape
         {sizeof(int) * info->encoded_data.size(), sizeof(int)}, // strides
