@@ -23,7 +23,6 @@
 #include <vector>
 #include <thread>
 #include <memory>
-#include <chrono>
 
 using namespace neuro;
 namespace py = pybind11;
@@ -50,11 +49,8 @@ struct WorkerData
     int num_steps; // number of timesteps for each sample
 };
 
-void predict(const nlohmann::json &j, Network *net, std::vector<std::vector<Spike>>& spikes, int num_steps, int* ret)
+void predict(caspian::Processor &p, Network *net, std::vector<std::vector<Spike>>& spikes, int num_steps, int* ret)
 {
-    // Right now, this creates a new processor for each network. This could probably be created once per thread instead.
-    auto p = caspian::Processor(j);
-
     p.load_network(net);
 
     // Predict each sample by iterating through the encoded data vector (spikes)
@@ -108,10 +104,12 @@ void pool_worker(WorkerData *info)
     size_t id;
     size_t r_stride = info->encoded_data.size();
 
+    auto processor = caspian::Processor(info->processor_config);
+
     // keep popping network ids off the queue until everything is processed
     while(info->queue.try_dequeue(id))
     {
-        predict(info->processor_config, 
+        predict(processor, 
                 info->networks[id], 
                 info->encoded_data, 
                 info->num_steps, 
