@@ -1,4 +1,4 @@
-#ifdef WITH_SUB
+#ifdef WITH_USB
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
