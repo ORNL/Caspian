@@ -322,6 +322,14 @@ namespace caspian
         dev->track_timing(output_id, track);
     }
 
+    // NOTE: Added by Katie
+    bool Processor::track_neuron_events(uint32_t node_id, bool track, int network_id) {
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        dev->collect_all_spikes();
+        return true;
+    }
+
     double Processor::output_last_fire(int output_id, int network_id)
     {
         if(network_id > int(internal_nets.size())-1)
@@ -345,6 +353,55 @@ namespace caspian
 
         std::vector<uint32_t> i_times = dev->get_output_values(output_id, network_id);
         return std::vector<double>(i_times.begin(), i_times.end());
+    }
+
+    // NOTE: Added by Katie
+    vector <int> Processor::neuron_counts(int network_id) {
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        auto sp_cnts = dev->get_all_spike_cnts();
+        std::vector<int> cnts;
+
+        for(auto const s : sp_cnts)
+        {
+            cnts.push_back(s.second);
+        }
+        return cnts;        
+    }
+
+    // NOTE: Added by Katie
+    vector <double> Processor::neuron_last_fires(int network_id) {
+        int i;
+        std::vector <std::vector<uint32_t> > all_spikes;
+        std::vector <double> last_times;
+
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        all_spikes = dev->get_all_spikes();
+        last_times.resize(all_spikes.size());
+        for (i = 0; i < (int)all_spikes.size(); i++) {
+            last_times[i] = all_spikes[i][all_spikes[i].size()-1];
+        }
+        return last_times;
+    }
+
+    // NOTE: Added by Katie
+    vector <vector <double> > Processor::neuron_vectors(int network_id) {
+        std::vector <std::vector<uint32_t> > all_spikes;
+        std::vector <std::vector<double> > ret_all_spikes;
+        int i, j;
+
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        all_spikes = dev->get_all_spikes();
+        ret_all_spikes.resize(all_spikes.size());
+        for (i = 0; i < (int)all_spikes.size(); i++) {
+            ret_all_spikes[i].resize(all_spikes[i].size());
+            for (j = 0; j < (int)all_spikes[i].size(); j++) {
+                ret_all_spikes[i][j] = all_spikes[i][j];
+            }
+        }        
+        return ret_all_spikes;
     }
 
     /* Removes the network */
