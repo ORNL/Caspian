@@ -20,6 +20,8 @@ INC = include
 LIB = lib
 OBJ = obj
 SRC = src
+STATIC_OBJ=obj_static
+STATIC_SRC=src_static
 EO = eo
 UTILS = utils
 TST = test
@@ -35,7 +37,7 @@ VCASPIAN ?= false
 USB ?= false
 
 # Framework Directories
-ROOT          = ..
+ROOT          = ../..
 ROOT_INCLUDE  = $(ROOT)/include
 
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
@@ -69,9 +71,24 @@ LIBCASPIAN = $(LIB)/libcaspian.a
 LIBFRAMEWORK = $(ROOT)/lib/libframework.a
 PYLIBCASPIAN = $(PYBUILD)/caspian$(PYBUILD_SUFFIX)
 PYFRAMEWORK  = $(ROOT)/build/neuro$(PYBUILD_SUFFIX)
+LIBRARY=$(LIB)/libproc2.a
+STATIC_LIB=$(LIB)/libproc1.a
 
-$(LIBFRAMEWORK): $(ROOT_INCLUDE)/framework.hpp
+$(LIBFRAMEWORK): $(ROOT_INCLUDE)/framework.hpp library
 	$(MAKE) -C $(ROOT)
+
+library: $(LIBRARY) $(STATIC_LIB) 
+
+$(LIBRARY): $(OBJECTS) 
+	ar r $(LIBRARY) $(OBJECTS)
+	ranlib $(LIBRARY)
+
+$(STATIC_LIB): $(STATIC_OBJ)/static_proc.o 
+	ar r $(STATIC_LIB) $(STATIC_OBJ)/static_proc.o
+	ranlib $(STATIC_LIB)
+
+$(STATIC_OBJ)/static_proc.o: $(STATIC_SRC)/static_proc.cpp
+	$(CC) $(CFLAGSBASE) -c $(STATIC_SRC)/static_proc.cpp -o $@
 
 $(PYFRAMEWORK):
 	$(MAKE) -C $(ROOT) python
@@ -120,6 +137,7 @@ $(TL_OBJECTS): $(OBJ)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE
 $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) $(V_OBJECTS) | $(LIB)
 	$(AR) r $@ $^ 
 	$(RANLIB) $@
+
 
 #########################
 ## Python support

@@ -43,11 +43,16 @@ namespace caspian
         /* Output tracker */
         void track_aftertime(int output_id, double aftertime, int network_id = 0);
         void track_output(int output_id, bool track = true, int network_id = 0);
+        bool track_output_events(int output_id, bool track = true, int network_id = 0);
 
         /* Access output spike data */
         double output_last_fire(int output_id, int network_id = 0);
         int output_count(int output_id, int network_id = 0);
         vector<double> output_vector(int output_id, int network_id = 0);
+
+        vector <double> output_last_fires(int network_id = 0);
+        vector <int> output_counts(int network_id = 0);
+        vector < vector <double> > output_vectors (int network_id = 0);
 
         /* Access all spike data -- added by Katie */
         bool track_neuron_events(uint32_t node_id, bool track = true, int network_id = 0);
@@ -61,7 +66,8 @@ namespace caspian
         /* Remove state, keep network loaded */
         void clear_activity(int network_id = 0);
 
-        neuro::PropertyPack get_properties();
+        neuro::PropertyPack get_network_properties();
+        nlohmann::json get_processor_properties();
 
         /* Added for TENNLab viz */
         void track_spikes();

@@ -164,9 +164,15 @@ namespace caspian
         }
     }
 
-    neuro::PropertyPack Processor::get_properties()
+    neuro::PropertyPack Processor::get_network_properties()
     {
         return properties;
+    }
+
+    // ADDED BY KATIE
+    json Processor::get_processor_properties() {
+        json j;
+        return j;
     }
 
     bool Processor::load_network(neuro::Network *n, int /* network_id */)
@@ -323,6 +329,16 @@ namespace caspian
     }
 
     // NOTE: Added by Katie
+    bool Processor::track_output_events(int output_id, bool track, int network_id)
+    {
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+
+        dev->track_timing(output_id, track);
+        return true;
+    }
+
+    // NOTE: Added by Katie
     bool Processor::track_neuron_events(uint32_t node_id, bool track, int network_id) {
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
@@ -353,6 +369,46 @@ namespace caspian
 
         std::vector<uint32_t> i_times = dev->get_output_values(output_id, network_id);
         return std::vector<double>(i_times.begin(), i_times.end());
+    }
+
+
+    // NOTE: Added by Katie
+    vector <double> Processor::output_last_fires(int network_id) {
+        int i;
+        vector <double> times;
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        for (i = 0; i < api_nets[network_id]->num_outputs(); i++) {
+            times.push_back(static_cast<double>(dev->get_last_output_time(i, network_id)));
+        }
+        return times;
+    }
+
+    // NOTE: Added by Katie
+    vector <int> Processor::output_counts(int network_id) {
+        int i;
+        vector <int> counts;
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        for (i = 0; i < api_nets[network_id]->num_outputs(); i++) {
+            counts.push_back(dev->get_output_count(i, network_id));
+        }
+        return counts; 
+    }
+
+    
+    // NOTE: Added by Katie
+    vector <vector <double> > Processor::output_vectors(int network_id) {
+        int i;
+        vector <vector <double> > ret;
+        vector <double> x;
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        for (i = 0; i < api_nets[network_id]->num_outputs(); i++) {
+            x = output_vector(i, network_id);
+            ret.push_back(x);
+        } 
+        return ret;
     }
 
     // NOTE: Added by Katie
