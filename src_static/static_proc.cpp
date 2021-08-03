@@ -1,6 +1,5 @@
 #include "framework.hpp"
 #include "processor.hpp"
-
 neuro::Processor *neuro::Processor::make(const string &name, json &params)
 {
   string es;

@@ -79,16 +79,6 @@ $(LIBFRAMEWORK): $(ROOT_INCLUDE)/framework.hpp library
 
 library: $(LIBRARY) $(STATIC_LIB) 
 
-$(LIBRARY): $(OBJECTS) 
-	ar r $(LIBRARY) $(OBJECTS)
-	ranlib $(LIBRARY)
-
-$(STATIC_LIB): $(STATIC_OBJ)/static_proc.o 
-	ar r $(STATIC_LIB) $(STATIC_OBJ)/static_proc.o
-	ranlib $(STATIC_LIB)
-
-$(STATIC_OBJ)/static_proc.o: $(STATIC_SRC)/static_proc.cpp
-	$(CC) $(CFLAGSBASE) -c $(STATIC_SRC)/static_proc.cpp -o $@
 
 $(PYFRAMEWORK):
 	$(MAKE) -C $(ROOT) python
@@ -138,6 +128,16 @@ $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) $(V_OBJECTS) | $(LIB)
 	$(AR) r $@ $^ 
 	$(RANLIB) $@
 
+$(LIBRARY): obj/network.o obj/network_conversion.o obj/processor.o obj/simulator.o 
+	ar r $(LIBRARY) obj/network.o obj/network_conversion.o obj/processor.o obj/simulator.o
+	ranlib $(LIBRARY)
+
+$(STATIC_LIB): $(STATIC_OBJ)/static_proc.o 
+	ar r $(STATIC_LIB) $(STATIC_OBJ)/static_proc.o
+	ranlib $(STATIC_LIB)
+
+$(STATIC_OBJ)/static_proc.o: $(STATIC_SRC)/static_proc.cpp
+	$(CC) $(CFLAGSBASE) -c $(STATIC_SRC)/static_proc.cpp -o $@
 
 #########################
 ## Python support
