@@ -5,7 +5,6 @@
 #include "processor.hpp"
 #include "fmt/format.h"
 #include "utils/json_helpers.hpp"
-
 using json = nlohmann::json;
 
 static json specs = {
@@ -358,7 +357,6 @@ namespace caspian
     {
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
-
         return dev->get_output_count(output_id, network_id);
     }
 
@@ -416,27 +414,39 @@ namespace caspian
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
         auto sp_cnts = dev->get_all_spike_cnts();
+        std::map <int, int> id_to_index;
+        int i;
         std::vector<int> cnts;
-
+        api_nets[network_id]->make_sorted_node_vector();
+        auto snv = api_nets[network_id]->sorted_node_vector;
+        cnts.resize(snv.size(), 0);
+        for (i = 0; i < (int)snv.size(); i++) {
+            id_to_index[snv[i]->id] = i;
+        }
         for(auto const s : sp_cnts)
         {
-            cnts.push_back(s.second);
+            cnts[id_to_index[s.first]] = s.second;
         }
+        
         return cnts;        
     }
 
     // NOTE: Added by Katie
     vector <double> Processor::neuron_last_fires(int network_id) {
-        int i;
+        int i,j;
         std::vector <std::vector<uint32_t> > all_spikes;
         std::vector <double> last_times;
+        api_nets[network_id]->make_sorted_node_vector();
+        auto snv = api_nets[network_id]->sorted_node_vector;
 
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
         all_spikes = dev->get_all_spikes();
-        last_times.resize(all_spikes.size());
+        last_times.resize(snv.size(), -1);
         for (i = 0; i < (int)all_spikes.size(); i++) {
-            last_times[i] = all_spikes[i][all_spikes[i].size()-1];
+            for (j = 0; j < (int)all_spikes[i].size(); j++) {
+                last_times[all_spikes[i][j]] = i;
+            }
         }
         return last_times;
     }
@@ -446,15 +456,16 @@ namespace caspian
         std::vector <std::vector<uint32_t> > all_spikes;
         std::vector <std::vector<double> > ret_all_spikes;
         int i, j;
+        api_nets[network_id]->make_sorted_node_vector();
+        auto snv = api_nets[network_id]->sorted_node_vector;
 
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
         all_spikes = dev->get_all_spikes();
-        ret_all_spikes.resize(all_spikes.size());
+        ret_all_spikes.resize(snv.size());
         for (i = 0; i < (int)all_spikes.size(); i++) {
-            ret_all_spikes[i].resize(all_spikes[i].size());
             for (j = 0; j < (int)all_spikes[i].size(); j++) {
-                ret_all_spikes[i][j] = all_spikes[i][j];
+                ret_all_spikes[all_spikes[i][j]].push_back(i);
             }
         }        
         return ret_all_spikes;
