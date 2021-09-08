@@ -171,6 +171,13 @@ namespace caspian
     // ADDED BY KATIE
     json Processor::get_processor_properties() {
         json j;
+        j["input_scaling_value"] = 255;
+        j["binary_input"] = true;
+        j["spike_raster_info"] = true;
+        j["plasticity"] = "none";
+        j["threshold_inclusive"] = false;
+        j["integration_delay"] = true;
+        j["run_time_inclusive"] = false; 
         return j;
     }
 
