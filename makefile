@@ -31,10 +31,10 @@ PYBUILD_BINDINGS = $(PYBUILD)/bindings
 PYBUILD_SUFFIX := $(shell python3-config --extension-suffix)
 
 # Verilator support for uCaspian simulation
-VCASPIAN ?= false
+VCASPIAN ?= true
 
 # FTDI USB support for uCaspian hardware
-USB ?= false
+USB ?= true
 
 # Framework Directories
 ROOT          = ../..
@@ -205,7 +205,8 @@ run_test: $(TEST_EXEC)
 ## Utilities
 UTILITIES  = $(BIN)/pass_bench \
              $(BIN)/all_to_all_bench \
-             $(BIN)/prune
+             $(BIN)/prune \
+             $(BIN)/echo
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
 	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)

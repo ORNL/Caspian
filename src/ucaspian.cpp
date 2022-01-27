@@ -93,7 +93,7 @@ namespace caspian
             // attempt to open the device with the given vendor/device id
             // Mimas 2a19:1009
             //if((ret = ftdi_usb_open(ftdi, 0x2a19, 0x1009)) < 0)
-            if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6010)) < 0)
+            if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6014)) < 0)
             {
                 const char *ftdi_err = ftdi_get_error_string(ftdi);
                 std::string err = fmt::format("libftdi usb open error: {}", ftdi_err); 
@@ -102,7 +102,43 @@ namespace caspian
             }
 
             // set latency timer
-            ftdi_set_latency_timer(ftdi, 1);
+            // ftdi_set_latency_timer(ftdi, 1);
+            // set latency timer
+            if (ftdi_set_latency_timer(ftdi, 100) < 0)
+            {
+               fprintf(stderr,"Can't set latency timer: %s\n",ftdi_get_error_string(ftdi));
+               exit(0);
+            }
+
+            // set baudrate
+            ftdi_set_baudrate(ftdi, 3000000);
+            printf("real baudrate used: %d\n", ftdi->baudrate);
+
+            // Set Bitmode
+            if (ftdi_set_bitmode(ftdi, 0xFF,BITMODE_RESET) < 0)
+            {
+               fprintf(stderr,"Can't set mode: %s\n",ftdi_get_error_string(ftdi));
+               exit(0);
+            }
+
+            // Turn off flow control
+            ftdi_setflowctrl(ftdi, 0);
+
+            ////Bitmode Reset
+            //ret = ftdi_set_bitmode(ftdi, 0xFF, BITMODE_RESET);
+            //if (ret != 0) {
+            //   ftdi_usb_close(ftdi);
+            //   printf("unable to RESET bitmode of Tricorder\n");
+            //   exit(0);
+            //}
+
+            ////Set FT 245 Synchronous FIFO mode
+            //ret = ftdi_set_bitmode(ftdi, 0xFF, BITMODE_SYNCFF);
+            //if (ret != 0) {
+            //   ftdi_usb_close(ftdi);
+            //   printf("unable to set synchronous FIFO mode of Tricorder\n");
+            //   exit(0);
+            //}
 
             // purge USB buffers on FT chip
             ftdi_usb_purge_buffers(ftdi);
@@ -465,7 +501,7 @@ namespace caspian
 
         std::vector<struct ftdi_transfer_control*> sends;
 
-        while(buf.size() < 62) buf.push_back(0);
+        // while(buf.size() < 62) buf.push_back(0);
 
         const int block = 3961; // TODO: What should this be?
         int boff = 0;
