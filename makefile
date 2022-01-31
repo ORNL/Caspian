@@ -50,7 +50,7 @@ LFLAGS = -lpthread
 
 ifeq ($(VCASPIAN),true)
     CFLAGSBASE += -DWITH_VERILATOR
-    CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include
+    CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -I$(HOME)/oss-cad-suite/share/verilator/include
     LFLAGS += -lz
 endif
 
@@ -61,7 +61,7 @@ endif
 ## Targets
 .PHONY: all clean test run_test python utils
 all: $(LIB)/libcaspian.a
- 
+
 clean:
 	rm -rf $(BIN) $(OBJ) $(LIB) $(PYBUILD)
 
@@ -77,7 +77,7 @@ STATIC_LIB=$(LIB)/libproc1.a
 $(LIBFRAMEWORK): $(ROOT_INCLUDE)/framework.hpp library
 	$(MAKE) -C $(ROOT)
 
-library: $(LIBRARY) $(STATIC_LIB) 
+library: $(LIBRARY) $(STATIC_LIB)
 
 
 $(PYFRAMEWORK):
@@ -125,14 +125,14 @@ $(TL_OBJECTS): $(OBJ)/%.o : $(SRC)/%.cpp $(HEADERS) $(TL_HEADERS) $(ROOT_INCLUDE
 	$(CXX) $(CFLAGSBASE) -c $< -o $@
 
 $(LIBCASPIAN): $(OBJECTS) $(TL_OBJECTS) $(V_OBJECTS) | $(LIB)
-	$(AR) r $@ $^ 
+	$(AR) r $@ $^
 	$(RANLIB) $@
 
-$(LIBRARY): obj/network.o obj/network_conversion.o obj/processor.o obj/simulator.o 
+$(LIBRARY): obj/network.o obj/network_conversion.o obj/processor.o obj/simulator.o
 	ar r $(LIBRARY) obj/network.o obj/network_conversion.o obj/processor.o obj/simulator.o
 	ranlib $(LIBRARY)
 
-$(STATIC_LIB): $(STATIC_OBJ)/static_proc.o 
+$(STATIC_LIB): $(STATIC_OBJ)/static_proc.o
 	ar r $(STATIC_LIB) $(STATIC_OBJ)/static_proc.o
 	ranlib $(STATIC_LIB)
 
@@ -142,7 +142,7 @@ $(STATIC_OBJ)/static_proc.o: $(STATIC_SRC)/static_proc.cpp
 #########################
 ## Python support
 PYBUILD_FLAGS := $(shell python3 -m pybind11 --includes) -I$(INC) -I$(ROOT_INCLUDE) -I$(PYBINDINGS) -I$(ROOT)/$(PYBINDINGS) -std=c++14 -flto -fPIC -O3 -fvisibility=hidden
-PYBUILD_LFLAGS = -shared 
+PYBUILD_LFLAGS = -shared
 
 ifeq ($(USB),true)
     PYBUILD_FLAGS += -DWITH_USB
