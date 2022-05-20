@@ -150,7 +150,7 @@ ifeq ($(USB),true)
 endif
 
 ifeq ($(VCASPIAN),true)
-    PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -DWITH_VERILATOR
+    PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -I$(HOME)/oss-cad-suite/share/verilator/include -DWITH_VERILATOR
 endif
 
 # Patch symbol linkage issues for Mac OS
