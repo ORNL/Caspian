@@ -66,8 +66,10 @@ namespace caspian
         /* Remove state, keep network loaded */
         void clear_activity(int network_id = 0);
 
-        neuro::PropertyPack get_network_properties();
-        nlohmann::json get_processor_properties();
+        neuro::PropertyPack get_network_properties() const;
+        nlohmann::json get_processor_properties() const;
+        nlohmann::json get_params() const;
+        std::string get_name() const;
 
         /* Added for TENNLab viz */
         void track_spikes();
@@ -83,6 +85,7 @@ namespace caspian
         caspian::Backend* dev;
 
         json jconfig;
+        json saved_params;
         neuro::PropertyPack properties;
 
         /* for single network sim */

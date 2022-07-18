@@ -60,7 +60,7 @@ endif
 
 ## Targets
 .PHONY: all clean test run_test python utils
-all: $(LIB)/libcaspian.a
+all: $(LIB)/libcaspian.a library
  
 clean:
 	rm -rf $(BIN) $(OBJ) $(LIB) $(PYBUILD)
@@ -211,4 +211,3 @@ $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
 	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)
 
 utils: $(UTILITIES)
-
