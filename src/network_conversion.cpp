@@ -11,6 +11,8 @@ namespace caspian
     {
         using neuro::Property;
 
+        (void) s_debug;
+
         if(tn == nullptr || net == nullptr)
             return false;
 
