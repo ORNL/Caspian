@@ -35,6 +35,8 @@ namespace caspian
 
     Processor::Processor(const json& j)
     {
+        saved_params = j;
+
         // Default configuration
         jconfig = {
             { "Backend",                "Event_Simulator" },
@@ -163,13 +165,13 @@ namespace caspian
         }
     }
 
-    neuro::PropertyPack Processor::get_network_properties()
+    neuro::PropertyPack Processor::get_network_properties() const
     {
         return properties;
     }
 
     // ADDED BY KATIE
-    json Processor::get_processor_properties() {
+    json Processor::get_processor_properties() const {
         json j;
         j["input_scaling_value"] = 255;
         j["binary_input"] = true;
@@ -179,6 +181,14 @@ namespace caspian
         j["integration_delay"] = true;
         j["run_time_inclusive"] = false; 
         return j;
+    }
+
+    json Processor::get_params() const {
+        return saved_params;
+    }
+
+    string Processor::get_name() const {
+      return "caspian";
     }
 
     bool Processor::load_network(neuro::Network *n, int /* network_id */)
@@ -346,6 +356,8 @@ namespace caspian
 
     // NOTE: Added by Katie
     bool Processor::track_neuron_events(uint32_t node_id, bool track, int network_id) {
+        (void) track;
+        (void) node_id;
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
         dev->collect_all_spikes();
@@ -430,7 +442,7 @@ namespace caspian
         for (i = 0; i < (int)snv.size(); i++) {
             id_to_index[snv[i]->id] = i;
         }
-        for(auto const s : sp_cnts)
+        for(auto const &s : sp_cnts)
         {
             cnts[id_to_index[s.first]] = s.second;
         }
@@ -537,7 +549,7 @@ namespace caspian
         std::vector<int> cnts;
         std::vector<int> neurons;
 
-        for(auto const s : sp_cnts)
+        for(auto const &s : sp_cnts)
         {
             neurons.push_back(s.first);
             cnts.push_back(s.second);
