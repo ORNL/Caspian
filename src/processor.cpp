@@ -490,6 +490,29 @@ namespace caspian
         return ret_all_spikes;
     }
 
+    // NOTE: Added by JSP
+    vector < double > Processor::neuron_charges(int network_id) {
+        std::vector <double > rv;
+        size_t i;
+        Neuron *n;
+        api_nets[network_id]->make_sorted_node_vector();
+        auto snv = api_nets[network_id]->sorted_node_vector;
+
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        for (i = 0; i < snv.size(); i++) {
+          n = internal_nets[network_id]->get_neuron_ptr(snv[i]->id);
+          if (n == NULL) {
+            fprintf(stderr, "Internal caspian error.  Couldn't get neuron with id: %u\n", 
+               snv[i]->id);
+            exit(1);
+          }
+          rv.push_back(n->charge);
+        }        
+        return rv;
+
+    }
+
     /* Removes the network */
     void Processor::clear(int network_id)
     {

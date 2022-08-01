@@ -54,11 +54,12 @@ namespace caspian
         vector <int> output_counts(int network_id = 0);
         vector < vector <double> > output_vectors (int network_id = 0);
 
-        /* Access all spike data -- added by Katie */
+        /* Access all spike data -- added by Katie / JSP */
         bool track_neuron_events(uint32_t node_id, bool track = true, int network_id = 0);
         vector <int> neuron_counts(int network_id = 0);
         vector <double> neuron_last_fires(int network_id = 0);
         vector < vector <double> > neuron_vectors(int network_id = 0);
+        vector < double > neuron_charges(int network_id = 0);
 
         /* Remove the network from the processor */
         void clear(int network_id = 0);
