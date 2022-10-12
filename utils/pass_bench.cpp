@@ -212,7 +212,7 @@ int main(int argc, char **argv)
     else if(backend == "verilator-log")
     {
         fmt::print("Using uCaspian Verilator backend - debug => pass.fst\n");
-        sim = std::make_unique<VerilatorCaspian>(false, "pass.fst");
+        sim = std::make_unique<VerilatorCaspian>(true, "pass.fst");
     }
 #endif
     else
