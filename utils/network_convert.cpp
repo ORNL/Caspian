@@ -13,7 +13,7 @@
 
 using namespace caspian;
 
-void convert(std::string network_file)
+void convert(const std::string &network_file)
 {
     std::ifstream net_fstream(network_file);
     Network net;
@@ -39,14 +39,14 @@ void convert(std::string network_file)
 
         ss_neurons << "{" << n->id << "," << n->threshold << "," << std::to_string(n->delay) << "," << std::to_string(n->leak) << "," << output_en << "," << n_syn_start << "," << n_syn_cnt << "}";
         neuron_cnt++;
-        if (neuron_cnt != net.num_neurons()) ss_neurons << ","; 
-        
+        if (neuron_cnt != net.num_neurons()) ss_neurons << ",";
+
         // add synapses
         for(const std::pair<Neuron*, Synapse*> &p : n->outputs)
         {
             ss_synapses << "{" << syn_cnt << "," << p.second->weight << "," << p.first->id << "}";
             syn_cnt++;
-            if ((unsigned int)syn_cnt != net.num_synapses()) ss_synapses << ","; 
+            if ((unsigned int)syn_cnt != net.num_synapses()) ss_synapses << ",";
         }
     }
 
