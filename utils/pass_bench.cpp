@@ -48,6 +48,7 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     generate_pass(net.get(), w, h, adly);
 
     // Save the network to a file
+    fmt::print("Writing network to passnet.json\n");
     std::ofstream net_writer("passnet.json");
     net.get()->to_stream(net_writer);
 
