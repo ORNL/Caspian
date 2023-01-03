@@ -46,7 +46,7 @@ void convert(const std::string &network_file)
         {
             ss_synapses << "{" << syn_cnt << "," << p.second->weight << "," << p.first->id << "}";
             syn_cnt++;
-            if ((unsigned int)syn_cnt != net.num_synapses()) ss_synapses << ",";
+            if (static_cast<unsigned int>(syn_cnt) != net.num_synapses()) ss_synapses << ",";
         }
     }
 
