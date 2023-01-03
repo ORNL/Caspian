@@ -53,10 +53,10 @@ void convert(const std::string &network_file)
     ss_neurons << "};";
     ss_synapses << "};";
 
-    std::cout << "Paste the following snippet into the microcontroller program to configure this network:" << std::endl << std::endl;
-    std::cout << ss_neurons.str() << std::endl << std::endl;
-    std::cout << ss_synapses.str() << std::endl << std::endl;
-    std::cout << "ucaspian_config_network(dev, neurons, " << net.num_neurons() << ", synapses, " << net.num_synapses() << ");" << std::endl << std::endl;
+    std::cout << "Paste the following snippet into the microcontroller program to configure this network:\n\n";
+    std::cout << ss_neurons.str() << "\n\n";
+    std::cout << ss_synapses.str() << "\n\n";
+    std::cout << "ucaspian_config_network(dev, neurons, " << net.num_neurons() << ", synapses, " << net.num_synapses() << ");\n" << std::endl;
 }
 
 int main(int argc, char **argv)
