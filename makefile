@@ -206,7 +206,8 @@ run_test: $(TEST_EXEC)
 UTILITIES  = $(BIN)/pass_bench \
              $(BIN)/all_to_all_bench \
              $(BIN)/prune \
-             $(BIN)/echo
+             $(BIN)/echo \
+             $(BIN)/network_convert
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
 	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)
