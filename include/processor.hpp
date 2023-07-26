@@ -60,6 +60,10 @@ namespace caspian
         vector <double> neuron_last_fires(int network_id = 0);
         vector < vector <double> > neuron_vectors(int network_id = 0);
         vector < double > neuron_charges(int network_id = 0);
+        void synapse_weights (vector <uint32_t> &pres,
+                                  vector <uint32_t> &posts,
+                                  vector <double> &vals,
+                                  int network_id = 0);
 
         /* Remove the network from the processor */
         void clear(int network_id = 0);
@@ -76,6 +80,7 @@ namespace caspian
         void track_spikes();
         void get_spike_counts(nlohmann::json& data);
         void get_spike_raster(nlohmann::json& data);
+        
 
         /*** ADDED METHODS ***/
         caspian::Network* get_internal_network(int network_id = 0) const;

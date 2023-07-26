@@ -532,6 +532,15 @@ namespace caspian
         multi_net_sim = false;
     }
 
+    /* Implemented by CDS -- Caspian doesn't support plasticity,
+       so the vectors are all empty. */
+    void Processor::synapse_weights(vector <uint32_t> &pres,
+                                  vector <uint32_t> &posts,
+                                  vector <double> &vals,
+                                  int network_id) {
+        return;
+    }
+
     /* Clears the state of a network */
     void Processor::clear_activity(int network_id)
     {
