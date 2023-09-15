@@ -3,6 +3,7 @@
 #include "ucaspian.hpp"
 #include <memory>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <chrono>
 #include <fmt/format.h>
@@ -45,6 +46,11 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
 
     // Generate the pass network
     generate_pass(net.get(), w, h, adly);
+
+    // Save the network to a file
+    fmt::print("Writing network to passnet.json\n");
+    std::ofstream net_writer("passnet.json");
+    net.get()->to_stream(net_writer);
 
     // Configure the simulator with the new network
     auto cfg_start = std::chrono::system_clock::now();

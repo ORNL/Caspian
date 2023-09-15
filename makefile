@@ -50,7 +50,7 @@ LFLAGS = -lpthread
 
 ifeq ($(VCASPIAN),true)
     CFLAGSBASE += -DWITH_VERILATOR
-    CFLAGSBASE += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -I$(HOME)/oss-cad-suite/share/verilator/include
+    CFLAGSBASE += -Iucaspian/sim/include -Iucaspian/vout -I/usr/local/share/verilator/include -I$(HOME)/oss-cad-suite/share/verilator/include
     LFLAGS += -lz
 endif
 
@@ -150,7 +150,7 @@ ifeq ($(USB),true)
 endif
 
 ifeq ($(VCASPIAN),true)
-    PYBUILD_FLAGS += -Iucaspian/include -Iucaspian/vout -I/usr/local/share/verilator/include -I$(HOME)/oss-cad-suite/share/verilator/include -DWITH_VERILATOR
+    PYBUILD_FLAGS += -Iucaspian/sim/include -Iucaspian/vout -I/usr/local/share/verilator/include -I$(HOME)/oss-cad-suite/share/verilator/include -DWITH_VERILATOR
 endif
 
 # Patch symbol linkage issues for Mac OS
@@ -206,7 +206,8 @@ run_test: $(TEST_EXEC)
 UTILITIES  = $(BIN)/pass_bench \
              $(BIN)/all_to_all_bench \
              $(BIN)/prune \
-             $(BIN)/echo
+             $(BIN)/echo \
+             $(BIN)/network_convert
 
 $(UTILITIES): $(BIN)/% : $(UTILS)/%.cpp $(LIBCASPIAN) $(LIBFRAMEWORK) | $(BIN)
 	$(CXX) $(CFLAGSBASE) $< -o $@ $(LIBCASPIAN) $(LIBFRAMEWORK) $(LFLAGS)
