@@ -10,7 +10,6 @@ find_package(pybind11 CONFIG REQUIRED)
 set(headers
    include/backend.hpp
    include/constants.hpp
-   include/hardware.hpp
    include/network_conversion.hpp
    include/network.hpp
    include/processor.hpp
@@ -21,11 +20,8 @@ set(headers
 set(sources
    src/network_conversion.cpp
    src/network.cpp
-   src/packets.cpp
    src/processor.cpp
    src/simulator.cpp
-   src/ucaspian.cpp
-   src/verilator_caspian.cpp
 )
 
 set(bindings
