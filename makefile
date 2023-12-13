@@ -28,7 +28,7 @@ TST = test
 PYBINDINGS = bindings
 PYBUILD = build
 PYBUILD_BINDINGS = $(PYBUILD)/bindings
-PYBUILD_SUFFIX := $(shell python3-config --extension-suffix)
+PYBUILD_SUFFIX := $(shell python3-config --extension-suffix || echo .cpython.so)
 
 # Verilator support for uCaspian simulation
 VCASPIAN ?= false
