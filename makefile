@@ -149,8 +149,6 @@ ifeq ($(CXX), g++)
 	CXXMAJORVERSION = $(shell g++ --version | grep ^g++ | sed 's/^.* //g' | sed 's/\..*//')
 	ifeq ($(shell test $(CXXMAJORVERSION) -ge 10; echo $$?),0)
 		FLTOFLAGS = -flto=auto
-	else
-		FLTOFLAGS = -flto
 	endif
 endif
 
