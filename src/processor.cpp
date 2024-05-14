@@ -117,39 +117,39 @@ namespace caspian
         if(!json_chk.empty())
             throw std::runtime_error(json_chk);
 
-        if(!jconfig["Leak_Enable"].get<bool>()) 
+        if(!jconfig["Leak_Enable"].get<bool>())
         {
             jconfig["Min_Leak"] = -1;
             jconfig["Max_Leak"] = -1;
         }
 
         // Add neuron parameters
-        properties.add_node_property("Threshold", 
-                jconfig["Min_Threshold"], 
-                jconfig["Max_Threshold"], 
-                neuro::Property::Type::INTEGER, 
+        properties.add_node_property("Threshold",
+                jconfig["Min_Threshold"],
+                jconfig["Max_Threshold"],
+                neuro::Property::Type::INTEGER,
                 1);
-        properties.add_node_property("Leak", 
-                jconfig["Min_Leak"], 
-                jconfig["Max_Leak"], 
-                neuro::Property::Type::INTEGER, 
+        properties.add_node_property("Leak",
+                jconfig["Min_Leak"],
+                jconfig["Max_Leak"],
+                neuro::Property::Type::INTEGER,
                 1);
-        properties.add_node_property("Delay", 
-                jconfig["Min_Axon_Delay"], 
-                jconfig["Max_Axon_Delay"], 
-                neuro::Property::Type::INTEGER, 
+        properties.add_node_property("Delay",
+                jconfig["Min_Axon_Delay"],
+                jconfig["Max_Axon_Delay"],
+                neuro::Property::Type::INTEGER,
                 1);
 
         // Add synapse parameters
         properties.add_edge_property("Weight",
                 jconfig["Min_Weight"],
-                jconfig["Max_Weight"], 
-                neuro::Property::Type::INTEGER, 
+                jconfig["Max_Weight"],
+                neuro::Property::Type::INTEGER,
                 1);
-        properties.add_edge_property("Delay", 
-                jconfig["Min_Synapse_Delay"], 
-                jconfig["Max_Synapse_Delay"], 
-                neuro::Property::Type::INTEGER, 
+        properties.add_edge_property("Delay",
+                jconfig["Min_Synapse_Delay"],
+                jconfig["Max_Synapse_Delay"],
+                neuro::Property::Type::INTEGER,
                 1);
     }
 
@@ -179,7 +179,7 @@ namespace caspian
         j["plasticity"] = "none";
         j["threshold_inclusive"] = false;
         j["integration_delay"] = true;
-        j["run_time_inclusive"] = false; 
+        j["run_time_inclusive"] = false;
         return j;
     }
 
@@ -204,7 +204,7 @@ namespace caspian
 
         // keep the pointer
         api_nets.push_back(n);
-        
+
         // make a new shadow network
         Network *internal_net = new Network();
 
@@ -410,10 +410,10 @@ namespace caspian
         for (i = 0; i < api_nets[network_id]->num_outputs(); i++) {
             counts.push_back(dev->get_output_count(i, network_id));
         }
-        return counts; 
+        return counts;
     }
 
-    
+
     // NOTE: Added by Katie
     vector <vector <double> > Processor::output_vectors(int network_id) {
         int i;
@@ -424,7 +424,7 @@ namespace caspian
         for (i = 0; i < api_nets[network_id]->num_outputs(); i++) {
             x = output_vector(i, network_id);
             ret.push_back(x);
-        } 
+        }
         return ret;
     }
 
@@ -446,8 +446,8 @@ namespace caspian
         {
             cnts[id_to_index[s.first]] = s.second;
         }
-        
-        return cnts;        
+
+        return cnts;
     }
 
     // NOTE: Added by Katie
@@ -486,7 +486,7 @@ namespace caspian
             for (j = 0; j < (int)all_spikes[i].size(); j++) {
                 ret_all_spikes[all_spikes[i][j]].push_back(i);
             }
-        }        
+        }
         return ret_all_spikes;
     }
 
@@ -503,14 +503,28 @@ namespace caspian
         for (i = 0; i < snv.size(); i++) {
           n = internal_nets[network_id]->get_neuron_ptr(snv[i]->id);
           if (n == NULL) {
-            fprintf(stderr, "Internal caspian error.  Couldn't get neuron with id: %u\n", 
+            fprintf(stderr, "Internal caspian error.  Couldn't get neuron with id: %u\n",
                snv[i]->id);
             exit(1);
           }
           rv.push_back(n->charge);
-        }        
+        }
         return rv;
 
+    }
+
+    // NOTE: Added by Aaron to match API. Currently not implemented.
+    long long Processor::total_neuron_counts(int network_id) {
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        return -1;
+    }
+
+    // NOTE: Added by Aaron to match API. Currently not implemented.
+    long long Processor::total_neuron_accumulates(int network_id) {
+        if(network_id > int(internal_nets.size())-1)
+            throw std::runtime_error(format("[output] Specified network {} is not loaded", network_id));
+        return -1;
     }
 
     /* Removes the network */
@@ -586,7 +600,7 @@ namespace caspian
             neurons.push_back(s.first);
             cnts.push_back(s.second);
         }
-        
+
         data["Event Counts"] = cnts;
         data["Neuron Alias"] = neurons;
     }

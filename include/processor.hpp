@@ -15,7 +15,7 @@ namespace caspian
     using neuro::Spike;
     using nlohmann::json;
 
-    class Processor : public neuro::Processor 
+    class Processor : public neuro::Processor
     {
     public:
         Processor(const json &j);
@@ -24,7 +24,7 @@ namespace caspian
         // TODO: unique_ptr, shared_ptr, or raw pointer?
         bool load_network(neuro::Network* n, int network_id = 0);
         bool load_networks(vector<neuro::Network*>& n);
-        
+
         /* Apply spike(s) to a network */
         void apply_spike(const Spike& s, int network_id = 0);
         void apply_spikes(const vector<Spike>& s, int network_id = 0);
@@ -65,6 +65,10 @@ namespace caspian
                                   vector <double> &vals,
                                   int network_id = 0);
 
+        /* New processor functions -- added by Aaron */
+        long long total_neuron_counts(int network_id = 0);
+        long long total_neuron_accumulates(int network_id = 0);
+
         /* Remove the network from the processor */
         void clear(int network_id = 0);
 
@@ -80,7 +84,7 @@ namespace caspian
         void track_spikes();
         void get_spike_counts(nlohmann::json& data);
         void get_spike_raster(nlohmann::json& data);
-        
+
 
         /*** ADDED METHODS ***/
         caspian::Network* get_internal_network(int network_id = 0) const;
