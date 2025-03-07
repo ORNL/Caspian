@@ -272,34 +272,54 @@ namespace caspian
         return dev->configure_multi(internal_nets);
     }
 
-    void Processor::apply_spike(const Spike &s, int network_id)
+    void Processor::apply_spike(const Spike& s,
+                                bool normalized,
+                                int network_id)
     {
         if(network_id > int(internal_nets.size())-1)
             throw std::runtime_error(format("[apply] Specified network {} is not loaded", network_id));
 
-        int16_t int_val = s.value * caspian::constants::MAX_DEVICE_INPUT;
+        int16_t int_val;
+
+        if (normalized) {
+            int_val = s.value * caspian::constants::MAX_DEVICE_INPUT;
+        } else {
+            int_val = s.value;
+            if (int_val < 0 || int_val > caspian::constants::MAX_DEVICE_INPUT)
+                throw std::runtime_error(format("[apply] Bad spike value: {}: "
+                                                "integer part must be >= {} and <= {}",
+                                                s.value, 0, caspian::constants::MAX_DEVICE_INPUT));
+        }
+
         dev->apply_input(s.id, int_val, s.time);
     }
 
-    void Processor::apply_spike(const Spike &s, const vector<int>& network_ids)
+    void Processor::apply_spike(const Spike& s,
+                                const vector<int>& network_ids,
+                                bool normalized)
     {
         (void) s;
         (void) network_ids;
+        (void) normalized;
         throw std::invalid_argument("Batch spike is not supported");
     }
 
-    void Processor::apply_spikes(const std::vector<Spike>& spikes, int network_id)
+    void Processor::apply_spikes(const vector<Spike>& spikes,
+                                 bool normalized,
+                                 int network_id)
     {
         // Error check? Not currently needed
         for(const Spike &s : spikes)
-            apply_spike(s, network_id);
+            apply_spike(s, normalized, network_id);
     }
 
-    void Processor::apply_spikes(const std::vector<Spike>& spikes, const vector<int>& network_ids)
+    void Processor::apply_spikes(const vector<Spike>& spikes,
+                                const vector<int>& network_ids,
+                                bool normalized)
     {
         // Error check? Not currently needed
         for(const Spike &s : spikes)
-            apply_spike(s, network_ids);
+            apply_spike(s, network_ids, normalized);
     }
 
     void Processor::run(double duration, int network_id)
@@ -552,6 +572,10 @@ namespace caspian
                                   vector <uint32_t> &posts,
                                   vector <double> &vals,
                                   int network_id) {
+        (void) pres;
+        (void) posts;
+        (void) vals;
+        (void) network_id;
         return;
     }
 
