@@ -26,12 +26,20 @@ namespace caspian
         bool load_networks(vector<neuro::Network*>& n);
 
         /* Apply spike(s) to a network */
-        void apply_spike(const Spike& s, int network_id = 0);
-        void apply_spikes(const vector<Spike>& s, int network_id = 0);
+        void apply_spike(const Spike& s,
+                         bool normalized = true,
+                         int network_id = 0);
+        void apply_spike(const Spike& s,
+                         const vector<int>& network_ids,
+                         bool normalized = true);
 
         /* Apply spike(s) to multiple networks */
-        void apply_spike(const Spike& s, const vector<int>& network_ids);
-        void apply_spikes(const vector<Spike>& s, const vector<int>& network_ids);
+        void apply_spikes(const vector<Spike>& spikes,
+                          bool normalized = true,
+                          int network_id = 0);
+        void apply_spikes(const vector<Spike>& spikes,
+                          const vector<int>& network_ids,
+                          bool normalized = true);
 
         /* Run the network for the desired time with queued input(s) */
         void run(double duration, int network_id = 0);
