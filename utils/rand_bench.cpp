@@ -3,8 +3,6 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
-#include <fmt/format.h>
-#include <fmt/ostream.h>
 
 using namespace caspian;
 
@@ -42,10 +40,10 @@ void run_test(int inputs, int outputs, int hidden, int runs, int seed, int runti
     std::chrono::duration<double, std::micro> rnd_duration = (cfg_start - rand_start);
     std::chrono::duration<double, std::micro> cfg_duration = (cfg_end - cfg_start);
 
-    fmt::print("Seed: {} | Inputs: {} Outputs: {} | Neurons: {} Synapses: {} | Cycles: {}\n", 
+    printf("Seed: %d | Inputs: %d Outputs: %d | Neurons: %zu Synapses: %zu | Cycles: %d\n", 
             seed, inputs, outputs, net.num_neurons(), net.num_synapses(), runtime);
-    fmt::print("Random Net: {} us\n", rnd_duration.count()); 
-    fmt::print("Configure : {} us\n", cfg_duration.count());
+    printf("Random Net: %lf us\n", rnd_duration.count()); 
+    printf("Configure : %lf us\n", cfg_duration.count());
 
     for(int r = 0; r < runs; ++r)
     {
@@ -74,11 +72,11 @@ void run_test(int inputs, int outputs, int hidden, int runs, int seed, int runti
     double avg = 0;
     for(auto const &t : sim_times) avg += t.count();
     avg /= sim_times.size();
-    fmt::print("Average Simulate (s)     : {}\n", avg);
-    fmt::print("Median Simulate  (s)     : {}\n", sim_times[sim_times.size()/2].count());
-    fmt::print("Accumulations            : {}\n", accumulations);
-    fmt::print("Accumulations per second : {:.1f}\n", static_cast<double>(accumulations) / avg);
-    fmt::print("Effective Clock Speed    : {:.4f} KHz\n", (static_cast<double>(runtime) / avg) / (1000) );
+    printf("Average Simulate (s)     : %lf\n", avg);
+    printf("Median Simulate  (s)     : %lf\n", sim_times[sim_times.size()/2].count());
+    printf("Accumulations            : %llu\n", accumulations);
+    printf("Accumulations per second : %.1f\n", static_cast<double>(accumulations) / avg);
+    printf("Effective Clock Speed    : %.4f KHz\n", (static_cast<double>(runtime) / avg) / (1000) );
 }
 
 int main(int argc, char **argv)
@@ -87,7 +85,7 @@ int main(int argc, char **argv)
 
     if(argc < 7)
     {
-        fmt::print("Usage: {} inputs outputs hidden n_runs runtime seed\n", argv[0]);
+        printf("Usage: %s inputs outputs hidden n_runs runtime seed\n", argv[0]);
         exit(1);
     }
 

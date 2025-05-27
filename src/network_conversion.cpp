@@ -1,7 +1,6 @@
 #include "framework.hpp"
 #include "network.hpp"
 #include "network_conversion.hpp"
-#include "fmt/format.h"
 
 namespace caspian
 {

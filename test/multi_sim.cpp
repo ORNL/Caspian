@@ -1,7 +1,6 @@
 #include <vector>
 
 #include "doctest/doctest.h"
-#include "fmt/format.h"
 #include "network.hpp"
 #include "simulator.hpp"
 

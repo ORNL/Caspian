@@ -8,8 +8,8 @@
 #include <sstream>
 #include <vector>
 #include <chrono>
-#include <fmt/format.h>
-#include <fmt/ostream.h>
+//#include <fmt/format.h>
+//#include <fmt/ostream.h>
 
 using namespace caspian;
 
@@ -65,7 +65,8 @@ int main(int argc, char **argv)
 
     if(argc != 2)
     {
-        fmt::print("Usage: {} network_filename.json\n", argv[0]);
+        printf("Usage: %s network_filename.json\n", argv[0])
+        //fmt::print("Usage: {} network_filename.json\n", argv[0]);
         return -1;
     }
 

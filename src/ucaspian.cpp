@@ -6,8 +6,6 @@
 #include <stdexcept>
 #include <thread>
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
 #include "ucaspian.hpp"
 #include "network.hpp"
 #include "constants.hpp"
@@ -95,8 +93,9 @@ namespace caspian
             //if((ret = ftdi_usb_open(ftdi, 0x2a19, 0x1009)) < 0)
             if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6014)) < 0)
             {
+                char err[1000] = "libftdi usb open error: ";
                 const char *ftdi_err = ftdi_get_error_string(ftdi);
-                std::string err = fmt::format("libftdi usb open error: {}", ftdi_err); 
+                strcat(err,ftdi_err);
                 ftdi_free(ftdi);
                 throw std::runtime_error(err);
             }
@@ -170,7 +169,8 @@ namespace caspian
 
     int HardwareState::parse_cmds_cond(const std::vector<uint8_t> &buf, std::function<bool(HardwareState*)> &cond_func)
     {
-        debug_print("Enter parse_cmds -- buf size: {}\n", buf.size());
+        if(m_debug)
+            printf("Enter parse_cmds -- buf size: %zu\n",buf.size());
         int offset = 0;
 
         while(offset < buf.size())
@@ -187,7 +187,8 @@ namespace caspian
 
     int HardwareState::parse_cmds(const std::vector<uint8_t> &buf)
     {
-        debug_print("Enter parse_cmds -- buf size: {}\n", buf.size());
+        if(m_debug)
+            printf("Enter parse_cmds -- buf size: %zu\n",buf.size());
         int offset = 0;
 
         while(offset < buf.size())
@@ -215,12 +216,14 @@ namespace caspian
         {
             case CFG_ACK:
                 cfg_acks++;
-                debug_print(" > Config Ack {}\n", cfg_acks);
+                if(m_debug)
+                    printf(" > Config Ack %u\n",cfg_acks);
                 break;
 
             case CLR_ACK:
                 clr_acks++;
-                debug_print(" > Clear Ack {}\n", clr_acks);
+                if(m_debug)
+                    printf(" > Clear Ack %u\n",clr_acks);
                 break;
 
             case METRIC_RESP:
@@ -228,7 +231,8 @@ namespace caspian
                 {
                     return 0;
                 }
-                debug_print(" > Metric Response\n");
+                if(m_debug)
+                    printf(" > Metric Response\n");
 
                 metric_addr = buf[1];
                 metric_value = buf[2];
@@ -245,10 +249,11 @@ namespace caspian
                 t = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
                 incr = 5;
 
-                debug_print(" > Time Update: {}\n", t);
+                if(m_debug)
+                    printf(" > Time Update: %llu\n",t);
 
                 if(t - net_time > 255)
-                    fmt::print("Corrupted time {} -> {} -- {} {} {} {} {}\n", net_time, t, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
+                    printf("Corrupted time %llu -> %llu -- %d %d %d %d %d\n", net_time, t, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
 
                 // update time
                 net_time = t;
@@ -265,11 +270,12 @@ namespace caspian
                 addr = buf[1];
                 incr = 2;
 
-                debug_print(" > Fire {} [t={}]\n", addr, net_time);
+                if(m_debug)
+                    printf(" > Fire %d [t=%llu]\n", addr, net_time);
 
                 if(!net->is_neuron(addr))
                 {
-                    fmt::print("Corrupted fire {}\n", addr);
+                    printf("Corrupted fire %d\n",addr);
                     break;
                 }
 
@@ -311,9 +317,8 @@ namespace caspian
         }
         else if(new_net->num_neurons() > 256 || new_net->num_synapses() > 4096)
         {
-            fmt::print(std::cerr, 
-                "Network is too large with {} neurons and {} synapses for the uCaspian device\n", 
-                new_net->num_neurons(), new_net->num_synapses());
+            std::cerr << "Network is too large with " << to_string(new_net->num_neurons()) << 
+                " neurons and " << to_string(new_net->num_synapses()) << " synapses for the uCaspian device\n"; 
 
             net = nullptr;
             return false;
@@ -325,8 +330,8 @@ namespace caspian
             uint32_t nid = new_net->get_input(i);
             if(nid > 127)
             {
-                fmt::print(std::cerr, "Network input neurons must have an id <= 127 for uCaspian.\n");
-                fmt::print(std::cerr, "Input {} is neuron with id={}\n", i, nid);
+                std::cerr << "Network input neurons must have an id <= 127 for uCaspian.\n"; 
+                std::cerr << "Input " << to_string(i) << " is neuron with id=" << to_string(nid) << std::endl;
                 net = nullptr;
                 return false;
             }
@@ -337,9 +342,11 @@ namespace caspian
 
         // clear configuration
         make_clear_config(cfg_buf);
-        debug_print("Preparing to send clear config...");
+        if(m_debug)
+            printf("Preparing to send clear config...");
         send_and_read(cfg_buf, [](HardwareState *hw){ return hw->clr_acks > 0; });
-        debug_print(" Clear ack'd\n");
+        if(m_debug)
+            printf(" Clear ack'd\n");
         cfg_buf.clear();
 
         unsigned int elms_prog = 0;
@@ -367,7 +374,8 @@ namespace caspian
 
         if(elms_prog > 0)
         {
-            fmt::print("Send config for {} elements with {} bytes\n", elms_prog, cfg_buf.size()); 
+            std::cout << "Send config for " << to_string(elms_prog) << " elements with " 
+                << to_string(cfg_buf.size()) << " bytes\n";
             send_and_read(cfg_buf, [=](HardwareState *hw){ return hw->cfg_acks >= elms_prog; });
         }
 
@@ -396,7 +404,8 @@ namespace caspian
                 step_size = (steps > 255) ? 255 : steps;
                 steps -= step_size;
 
-                debug_print(" > STEP {}\n", step_size);
+                if(m_debug)
+                    printf(" > STEP %d\n",step_size);
 
                 make_step(send_buf, step_size);
                 cur_time += step_size;
@@ -423,7 +432,8 @@ namespace caspian
             }
 
             make_input_fire(send_buf, f.id, f.weight);
-            debug_print("[t={:3d}] FIRE {:3d}:{:3d}\n", cur_time, f.id, f.weight);
+            if(m_debug)
+                printf("[t=%3d] FIRE %3d:%3d\n", cur_time, f.id, f.weight)
         }
 
         if(cur_time < end_time)
@@ -455,7 +465,8 @@ namespace caspian
             int processed = hw->parse_cmds_cond(hw->rec_leftover, cond);
             processed_bytes.push_back(processed);
 
-            hw->debug_print("[TIME: {}] Processed {} bytes ", hw->net_time, processed);
+            if(hw->m_debug)
+                printf("[TIME: %llu] Processed %d bytes ", hw->net_time, processed)
             
             if(processed == hw->rec_leftover.size())
             {
@@ -467,7 +478,8 @@ namespace caspian
                 hw->rec_leftover = std::move(new_leftover);
             }
 
-            hw->debug_print(" - {} leftover\n", hw->rec_leftover.size());
+            if(hw->m_debug)
+                printf(" - %zu leftover\n", hw->rec_leftover.size())
 
             if(processed_bytes.size() > max_zero_transfers)
             {
@@ -479,14 +491,14 @@ namespace caspian
 
                 if(processed_last == 0)
                 {
-                    hw->debug_print("Processed Bytes: {}\n", processed);
-                    hw->debug_print("Exit due to 0 bytes processed recently.\n");
+                    if(hw->m_debug)
+                        printf("Processed Bytes: %d\nExit due to 0 bytes processed recently.\n",processed);
 
                     // Check FTDI modem status
                     unsigned short ftdi_status;
                     ftdi_poll_modem_status(ftdi, &ftdi_status);
 
-                    fmt::print("Transfer Error | FTDI status: {:x}\n", ftdi_status);
+                    printf("Transfer Error | FTDI status: %x\n", ftdi_status);
                     exit(0);
                 }
             }
@@ -508,7 +520,8 @@ namespace caspian
         while(boff < buf.size())
         {
             int sz = std::min(int(buf.size()-boff), block);
-            debug_print(" < Async write of {} bytes -- offset: {} -- total: {}\n", sz, boff, buf.size());
+            if(m_debug)
+                printf(" < Async write of %d bytes -- offset: %d -- total: %zu\n", sz, boff, buf.size())
             sends.push_back(ftdi_write_data_submit(ftdi, &(buf[boff]), sz));
             boff += sz;
         }
@@ -529,7 +542,7 @@ namespace caspian
         auto mit = metric_addrs.find(metric);
         if(mit == metric_addrs.end() || mit->second.empty())
         {
-            fmt::print("Metric '{}' is not implemented for uCaspian.\n", metric);
+            printf("Metric '%s' is not implemented for uCaspian.\n",metric.c_str());
             return 0;
         }
 
@@ -548,7 +561,8 @@ namespace caspian
 
         for(auto metric : hw_state->rec_metrics)
         {
-            debug_print("[METRIC] Addr: {} Value: {}\n", metric.first, metric.second);
+            if(m_debug)
+                printf("[METRIC] Addr: %u Value: %u\n", metric.first, metric.second);
             val = val << 8;
             val |= metric.second;
         }
@@ -669,9 +683,9 @@ namespace caspian
         output_logs.emplace_back(net->num_outputs());
         rec_leftover.clear();
 
-        debug_print("[configure] outputs: {} ", net->num_outputs());
-        debug_print(" monitor_aftertime: {} monitor_precise: {} output_logs {}\n", 
-                monitor_aftertime.size(), monitor_precise.size(), output_logs.size());
+        if(m_debug)
+            printf("[configure] outputs: %zu monitor_aftertime: %zu monitor_precise: %zu output_logs %zu\n",
+                net->num_outputs(),monitor_aftertime.size(), monitor_precise.size(), output_logs.size());
 
         net_time = 0;
         cfg_acks = 0;

@@ -5,7 +5,6 @@
 #include <queue>
 #include <fstream>
 #include <memory>
-#include "fmt/format.h"
 
 #ifdef WITH_USB
 #include <libftdi1/ftdi.h>
@@ -31,13 +30,6 @@ namespace caspian
     {
     public:
         HardwareState(bool debug = false) : m_debug(debug) {}
-
-        /* allow easy debugging statements */
-        template<class ...Args>
-        void debug_print(Args&&... args) 
-        { 
-            if(m_debug) fmt::print(std::forward<Args>(args)...);
-        }
 
         void configure(Network *net);
         void clear();
@@ -97,12 +89,6 @@ namespace caspian
     protected:
         virtual void send_and_read(std::vector<uint8_t> &buf, 
                 std::function<bool(HardwareState*)> &&cond_func);
-
-        template<class ...Args>
-        void debug_print(Args&&... args) 
-        { 
-            if(m_debug) fmt::print(std::forward<Args>(args)...);
-        }
 
         /* stores the currently loaded network */
         Network *net;

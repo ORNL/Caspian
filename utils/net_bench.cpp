@@ -2,8 +2,8 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
-#include <fmt/format.h>
-#include <fmt/ostream.h>
+//#include <fmt/format.h>
+//#include <fmt/ostream.h>
 
 using namespace caspian;
 
@@ -36,8 +36,9 @@ void run_test(int inputs, int outputs, int hidden, int runs, int seed)
     double total_time = total_duration.count();
     double avg_time = total_time / static_cast<double>(runs);
 
-    fmt::print("Total time   (s) : {}\n", total_time);
-    fmt::print("Average time (s) : {}\n", avg_time);
+    printf("Total time   (s) : %lf\nAverage time (s) : %lf\n",total_time,avg_time);
+    //fmt::print("Total time   (s) : {}\n", total_time);
+    //fmt::print("Average time (s) : {}\n", avg_time);
 }
 
 int main(int argc, char **argv)
@@ -46,7 +47,8 @@ int main(int argc, char **argv)
 
     if(argc < 6)
     {
-        fmt::print("Usage: {} inputs outputs hidden n_runs seed\n", argv[0]);
+        printf("Usage: %s inputs outputs hidden n_runs seed\n", argv[0]);
+        //fmt::print("Usage: {} inputs outputs hidden n_runs seed\n", argv[0]);
         exit(1);
     }
 

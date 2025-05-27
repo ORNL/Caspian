@@ -1,7 +1,6 @@
 #include <vector>
 #include <algorithm>
 #include "doctest/doctest.h"
-#include "fmt/format.h"
 #include "network.hpp"
 #include "simulator.hpp"
 
@@ -9,12 +8,12 @@ using namespace caspian;
 
 TEST_CASE("Sizes")
 {
-    fmt::print("Size of:\n");
-    fmt::print(" Neuron: {}\n", sizeof(Neuron));
-    fmt::print(" Synapse: {}\n", sizeof(Synapse));
-    fmt::print(" Network: {}\n", sizeof(Network));
-    fmt::print(" Event: {}\n", sizeof(FireEvent));
-    fmt::print(" Simulator: {}\n", sizeof(Simulator));
+    printf("Size of:\n");
+    printf(" Neuron: %lu\n", sizeof(Neuron));
+    printf(" Synapse: %lu\n", sizeof(Synapse));
+    printf(" Network: %lu\n", sizeof(Network));
+    printf(" Event: %lu\n", sizeof(FireEvent));
+    printf(" Simulator: %lu\n", sizeof(Simulator)); 
 }
 
 TEST_CASE("Neurons may be added, retrieved, and deleted")

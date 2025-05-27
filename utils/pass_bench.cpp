@@ -6,8 +6,8 @@
 #include <fstream>
 #include <vector>
 #include <chrono>
-#include <fmt/format.h>
-#include <fmt/ostream.h>
+//#include <fmt/format.h>
+//#include <fmt/ostream.h>
 
 using namespace caspian;
 
@@ -48,7 +48,8 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     generate_pass(net.get(), w, h, adly);
 
     // Save the network to a file
-    fmt::print("Writing network to passnet.json\n");
+    printf("Writing network to passnet.json\n");
+    //fmt::print("Writing network to passnet.json\n");
     std::ofstream net_writer("passnet.json");
     net.get()->to_stream(net_writer);
 
@@ -62,9 +63,12 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
     auto cfg_end = std::chrono::system_clock::now();
 
     int cycles = (runtime == 0) ? 3*w + 2*h : runtime;
-    fmt::print("Width: {} Height: {} Cycles: {}\n", w, h, cycles);
-    fmt::print("Neurons: {} Synapses: {}\n", net->num_neurons(), net->num_synapses());
-    fmt::print("Configuration Time: {} us\n", (cfg_end - cfg_start).count() / 1000.0);
+    printf("Width: %d Height: %d Cycles: %d\n", w, h, cycles);
+    printf("Neurons: %zu Synapses: %zu\n", net->num_neurons(), net->num_synapses());
+    printf("Configuration Time: %lf us\n", (cfg_end - cfg_start).count() / 1000.0);
+    //fmt::print("Width: {} Height: {} Cycles: {}\n", w, h, cycles);
+    //fmt::print("Neurons: {} Synapses: {}\n", net->num_neurons(), net->num_synapses());
+    //fmt::print("Configuration Time: {} us\n", (cfg_end - cfg_start).count() / 1000.0);
 
     uint64_t accumulations = 0;
     uint64_t fires = 0;
@@ -88,7 +92,8 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
         auto sim_end = std::chrono::system_clock::now();
 
         std::chrono::duration<double> sim_time = sim_end - sim_start;
-        fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
+        printf("Simulate %4d: %lf s\n", r, sim_time.count());
+        //fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
         sim_times.push_back(sim_time);
 
         accumulations += sim->get_metric("accumulate_count");
@@ -97,10 +102,11 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
 
         for(int i = 0; i < h; ++i)
         {
-            fmt::print("Output {} ({}):", i, sim->get_output_count(i));
+            printf("Output %d (%d):", i, sim->get_output_count(i));
+            //fmt::print("Output {} ({}):", i, sim->get_output_count(i));
             auto outs = sim->get_output_values(i);
-            for(auto o : outs) fmt::print(" {}", o);
-            fmt::print("\n");
+            for(auto o : outs) printf(" %u", o);
+            printf("\n");
             outputs += sim->get_output_count(i);
         }
 
@@ -115,16 +121,16 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
 
     double avg_accum = static_cast<double>(accumulations) / static_cast<double>(runs);
 
-    fmt::print("\n");
-    fmt::print("---[Metrics]------------------------\n");
-    fmt::print("Average Simulate (s)     : {:9.7f}\n", avg);
-    fmt::print("Median Simulate  (s)     : {:9.7f}\n", sim_times[sim_times.size()/2].count());
-    fmt::print("Spikes                   : {}\n", fires);
-    fmt::print("Spikes/second            : {}\n", static_cast<double>(fires) / ttime);
-    fmt::print("Output Spikes            : {}\n", outputs);
-    fmt::print("Accumulations            : {}\n", accumulations);
-    fmt::print("Accumulations/second     : {:.1f}\n", static_cast<double>(accumulations) / ttime);
-    fmt::print("Effective Speed (KHz)    : {:.4f}\n", (static_cast<double>(runtime) / avg) / (1000) );
+    printf("\n");
+    printf("---[Metrics]------------------------\n");
+    printf("Average Simulate (s)     : %9.7f\n", avg);
+    printf("Median Simulate  (s)     : %9.7f\n", sim_times[sim_times.size()/2].count());
+    printf("Spikes                   : %llu\n", fires);
+    printf("Spikes/second            : %lf\n", static_cast<double>(fires) / ttime);
+    printf("Output Spikes            : %llu\n", outputs);
+    printf("Accumulations            : %llu\n", accumulations);
+    printf("Accumulations/second     : %.1f\n", static_cast<double>(accumulations) / ttime);
+    printf("Effective Speed (KHz)    : %.4f\n", (static_cast<double>(runtime) / avg) / (1000) );
 
     if(active_cycles != 0)
     {
@@ -132,11 +138,11 @@ void run_test(Backend *sim, int w, int h, int runs, int runtime = 0, int ifires 
         const double clk_speed = 25000000;
         //const double clk_speed = 150000000; // previously 25000000
         double adj_time = (static_cast<double>(active_cycles) / clk_speed) / static_cast<double>(runs);
-        fmt::print("---[FPGA Metrics]-------------------\n");
-        fmt::print("Active Clock Cycles      : {}\n", active_cycles);
-        fmt::print("Adj Runtime (s)          : {:9.7f}\n", adj_time);
-        fmt::print("Adj Accumulations/second : {:.1f}\n", avg_accum / adj_time);
-        fmt::print("Adj Effective Speed (KHz): {:.4f}\n", (runtime / adj_time) / (1000) );
+        printf("---[FPGA Metrics]-------------------\n");
+        printf("Active Clock Cycles      : %llu\n", active_cycles);
+        printf("Adj Runtime (s)          : %9.7f\n", adj_time);
+        printf("Adj Accumulations/second : %.1f\n", avg_accum / adj_time);
+        printf("Adj Effective Speed (KHz): %.4f\n", (runtime / adj_time) / (1000) );
     }
 }
 
@@ -152,7 +158,8 @@ int main(int argc, char **argv)
 
     if(argc < 5)
     {
-        fmt::print("Usage: {} backend width height n_runs (runtime) (fires) (delay)\n", argv[0]);
+        printf("Usage: %s backend width height n_runs (runtime) (fires) (delay)\n", argv[0]);
+        //fmt::print("Usage: {} backend width height n_runs (runtime) (fires) (delay)\n", argv[0]);
         return -1;
     }
 
@@ -181,7 +188,7 @@ int main(int argc, char **argv)
 
     if(dly > 15)
     {
-        fmt::print("Delay may not be greater than 15! Given {}\n", dly);
+        printf("Delay may not be greater than 15! Given %d\n", dly);
         return -1;
     }
 
@@ -189,44 +196,44 @@ int main(int argc, char **argv)
 
     if(backend == "sim")
     {
-        fmt::print("Using Simulator backend\n");
+        printf("Using Simulator backend\n");
         sim = std::make_unique<Simulator>();
     }
     else if(backend == "debug")
     {
-        fmt::print("Using Simulator backend\n");
+        printf("Using Simulator backend\n");
         sim = std::make_unique<Simulator>(true);
     }
 #ifdef WITH_USB
     else if(backend == "ucaspian")
     {
-        fmt::print("Using uCaspian backend\n");
+        printf("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(false);
     }
     else if(backend == "ucaspian-debug")
     {
-        fmt::print("Using uCaspian backend\n");
+        printf("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(true);
     }
 #endif
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {
-        fmt::print("Using uCaspian Verilator backend\n");
+        printf("Using uCaspian Verilator backend\n");
         sim = std::make_unique<VerilatorCaspian>(false);
     }
     else if(backend == "verilator-log")
     {
-        fmt::print("Using uCaspian Verilator backend - debug => pass.fst\n");
+        printf("Using uCaspian Verilator backend - debug => pass.fst\n");
         sim = std::make_unique<VerilatorCaspian>(true, "pass.fst");
     }
 #endif
     else
     {
 #ifdef WITH_VERILATOR
-        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug, verilator, verilator-log\n");
+        printf("Backend options: sim, sim-debug, ucaspian, ucaspian-debug, verilator, verilator-log\n");
 #else
-        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug\n");
+        printf("Backend options: sim, sim-debug, ucaspian, ucaspian-debug\n");
 #endif
         return 0;
     }
@@ -236,7 +243,7 @@ int main(int argc, char **argv)
     }
     catch(...)
     {
-        fmt::print("There was an error completing the test.\n");
+        printf("There was an error completing the test.\n");
     }
 
     return 0;

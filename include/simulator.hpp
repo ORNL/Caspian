@@ -5,7 +5,7 @@
 #include <queue>
 #include <fstream>
 #include <stdexcept>
-#include "fmt/format.h"
+#include <sstream>
 #include "robinhood/robin_map.h"
 
 #include "network.hpp"
@@ -44,8 +44,11 @@ namespace caspian
 
         inline void add_fire(int id, uint64_t time, bool precise=false)
         {
-            if(id > int(fire_counts.size()))
-                throw std::range_error(fmt::format("[Output Monitor] Provided output id {} exceed configuration ({})", id, fire_counts.size()));
+            if(id > int(fire_counts.size())){
+                std::ostringstream oss;
+                oss << "[Output Monitor] Provided output id " << id << "exceed configuration (" << fire_counts.size() << ")";
+                throw std::range_error(oss.str()); 
+            }
 
             fire_counts[id] += 1;
             last_fire_times[id] = time;
@@ -84,13 +87,6 @@ namespace caspian
 
         /* executes a single cycle of the simulation */
         void do_cycle();
-
-        /* fmtlib can throw an exception; we don't care in debug mode */
-        template<typename... Args>
-        void debug_print(Args... args) noexcept
-        {
-            if(m_debug) fmt::print(std::forward<Args>(args)...);
-        }
 
         /* id -> element coordinates for inputs */
         std::vector<uint32_t> input_map;
