@@ -2,11 +2,10 @@
 #include <sstream>
 #include <random>
 #include <cassert>
+#include <sstream>
 
 #include "nlohmann/json.hpp"
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
 #include "network.hpp"
 #include "constants.hpp"
 
@@ -15,21 +14,21 @@ namespace caspian
 
     std::string create_device_config(int size, int inputs, int outputs)
     {
-        fmt::memory_buffer cfg;
+        std::ostringstream oss;
 
         int maxdim = (inputs > outputs) ? inputs : outputs;
         size = (size > 1) ? size : maxdim * maxdim;
         size = (size > inputs + outputs) ? size : inputs + outputs;
 
-        fmt::format_to(cfg, "size {}\n", size);
+        oss << "size " << size << std::endl;
 
         for(int i = 0; i < inputs; i++)
-            fmt::format_to(cfg, "I {0} {0}\n", i); 
+            oss << "I " << i << " " << i << std::endl;
 
         for(int i = 0; i < outputs; i++)
-            fmt::format_to(cfg, "O {} {}\n", i, size-1-i);
+            oss << "O " << i << " " << size - 1 - i << std::endl;
 
-        return fmt::to_string(cfg);
+        return oss.str();
     }
 
     Neuron& Neuron::operator=(Neuron &&n) noexcept
@@ -335,7 +334,9 @@ namespace caspian
 
         if(it == elements.end())
         {
-            throw std::runtime_error(fmt::format("Could not find neuron with id {} (total elements {})\n", nid, elements.size()));
+            std::ostringstream oss;
+            oss << "Could not find neuron with id " << nid << " (total elements " << elements.size() << ")\n";
+            throw std::runtime_error(oss.str());
         }
 
         return *(it.value());
@@ -363,7 +364,7 @@ namespace caspian
         }
         else
         {
-            fmt::print(std::cerr, "Neuron {} does not exist for input {}\n", nid, id);
+            std::cerr << "Neuron " << nid << " does not exist for input " << id << std::endl;
         }
     }
 
@@ -379,7 +380,7 @@ namespace caspian
         }
         else
         {
-            fmt::print(std::cerr, "Neuron {} does not exist for output {}\n", nid, id);
+            std::cerr << "Neuron " << nid << " does not exist for output " << id << std::endl;
         }
     }
 
@@ -541,7 +542,7 @@ namespace caspian
         }
         else
         {
-            fmt::print(std::cerr, "Specified network metric '{}' is not implemented\n", metric);
+            std::cerr << "Specified network metric '" << metric << "' is not implemented\n";
         }
 
         return m;
@@ -669,33 +670,33 @@ namespace caspian
 
     std::string Network::to_gml() const
     {
-        fmt::memory_buffer gml;
+        std::ostringstream oss;
 
-        fmt::format_to(gml, "graph [\n");
-        fmt::format_to(gml, "  comment \"Automatically generated GML for CASPIAN\"\n");
-        fmt::format_to(gml, "  label \"network\"\n");
-        fmt::format_to(gml, "  directed 1\n");
+        oss << "graph [\n";
+        oss << "  comment \"Automatically generated GML for CASPIAN\"\n";
+        oss << "  label \"network\"\n";
+        oss << "  directed 1\n";
 
         for(const auto &n : elements)
         {
             Neuron *np = n.second;
-
-            fmt::format_to(gml, "  node [\n    id {0}\n    label {0}\n    threshold {1}\n  ]\n",
-                    np->id, np->threshold);
+            oss << "  node [\n    id " << np->id << "\n    label " << np->id <<"\n    threshold "
+                << np->threshold << "\n  ]\n";
         }
 
         for(const auto &n : elements)
         {
             for(auto s : n.second->synapses)
             {
-                fmt::format_to(gml, "  edge [\n    source {0}\n    target {1}\n    weight {2}\n    delay {3}\n  ]\n",
-                        s.first, n.first, s.second.weight, s.second.delay);
+                oss << "  edge [\n    source " << s.first << "\n    target " << n.first << "\n    weight "
+                 << s.second.weight << "\n    delay " << s.second.delay << "\n  ]\n";
+
             }
         }
+        
+        oss << "]\n";
 
-        fmt::format_to(gml, "]\n");
-
-        return fmt::to_string(gml);
+        return oss.str();
     }
 
     void Network::prune(bool io_prune)

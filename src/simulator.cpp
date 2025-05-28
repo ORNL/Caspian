@@ -2,8 +2,6 @@
 #include <chrono>
 #include <algorithm>
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
 #include "simulator.hpp"
 #include "network.hpp"
 #include "constants.hpp"
@@ -67,7 +65,8 @@ namespace caspian
             // accumulate charge
             to.charge += e.weight;
 
-            debug_print("[t={:3d}] Neuron {:2d} charge: {:4d} after accumulating {:4d}\n", net_time, to.id, to.charge, e.weight);
+            if(m_debug)
+                printf("[t=%3llu] Neuron %2d charge: %4d after accumulating %4d\n",net_time, to.id, to.charge, e.weight);
 
             // increment accumulations count
             metric_accumulates++;
@@ -90,7 +89,8 @@ namespace caspian
         // accumulate charge
         e.neuron->charge += e.syn->weight;
 
-        debug_print("[t={:3d}] Neuron {:2d} charge: {:4d} after accumulating {:4d}\n", net_time, e.neuron->id, e.neuron->charge, e.syn->weight);
+        if(m_debug)
+            printf("[t=%3llu] Neuron %2d charge: %4d after accumulating %4d\n",net_time, e.neuron->id, e.neuron->charge, e.syn->weight);
 
         // increment accumulations count
         metric_accumulates++;
@@ -117,7 +117,8 @@ namespace caspian
             // increment count of fires
             metric_fires++;
 
-            debug_print("[t={:4d}] > FIRE {:3d} charge: {:6d}", net_time, n->id, n->charge);
+            if(m_debug)
+                printf("[t=%4llu] > FIRE %3d charge: %6d",net_time, n->id, n->charge);
 
             // optionally, collect every spike
             if(collect_all) 
@@ -160,11 +161,13 @@ namespace caspian
                 {
                     int tag = (multi_net_sim) ? n->tag : 0;
                     output_logs[tag].add_fire(n->output_id, net_time - run_start_time, monitor_precise[n->output_id]);
-                    debug_print(" + output at {:4d}", net_time - run_start_time);
+                    if(m_debug)
+                        printf(" + output at %4llu",net_time - run_start_time);
                 }
             }
-
-            debug_print("\n");
+            
+            if(m_debug)
+                printf("\n");
         }
     }
 
@@ -384,7 +387,7 @@ namespace caspian
         }
         else
         {
-            fmt::print(std::cerr, "Specified device metric '{}' is not implemented\n", metric);
+            std::cerr << "Specified device metric " << metric << " is not implemented\n"; 
         }
 
         return m;

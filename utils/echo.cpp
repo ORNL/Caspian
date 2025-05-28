@@ -6,8 +6,6 @@
 #include <thread>
 #include <libftdi1/ftdi.h>
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
 
 int main(int argc, char **argv)
 {
@@ -23,8 +21,9 @@ int main(int argc, char **argv)
    //if((ret = ftdi_usb_open(ftdi, 0x2a19, 0x1009)) < 0)
    if((ret = ftdi_usb_open(ftdi, 0x0403, 0x6014)) < 0)
    {
+      char err[1000] = "libftdi usb open error: ";
       const char *ftdi_err = ftdi_get_error_string(ftdi);
-      std::string err = fmt::format("libftdi usb open error: {}", ftdi_err);
+      strcat(err,ftdi_err);
       ftdi_free(ftdi);
       throw std::runtime_error(err);
    }

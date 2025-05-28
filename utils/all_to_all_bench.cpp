@@ -6,8 +6,6 @@
 #include <algorithm>
 #include <chrono>
 #include <random>
-#include <fmt/format.h>
-#include <fmt/ostream.h>
 
 using namespace caspian;
 
@@ -86,10 +84,10 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     std::chrono::duration<double, std::micro> rnd_duration = (cfg_start - rand_start);
     std::chrono::duration<double, std::micro> cfg_duration = (cfg_end - cfg_start);
 
-    fmt::print("Seed: {} | Neurons: {} Synapses: {} | Cycles: {} | Input Duration: {}\n", 
+    printf("Seed: %d | Neurons: %zu Synapses: %zu | Cycles: %d | Input Duration: %d\n", 
             seed, net.num_neurons(), net.num_synapses(), runtime, input_time);
-    fmt::print("Random Net: {} us\n", rnd_duration.count()); 
-    fmt::print("Configure : {} us\n", cfg_duration.count());
+    printf("Random Net: %lf us\n", rnd_duration.count()); 
+    printf("Configure : %lf us\n", cfg_duration.count());
 
     for(int r = 0; r < runs; ++r)
     {
@@ -127,17 +125,17 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
         active_cycles += sim->get_metric("active_clock_cycles");
 
         std::chrono::duration<double> sim_time = sim_end - sim_start;
-        fmt::print("Simulate {:4d}: {} s\n", r, sim_time.count());
+        printf("Simulate %4d: %lf s\n", r, sim_time.count());
         sim_times.push_back(sim_time);
 
         if(print_outputs)
         {
             for(int i = 0; i < inputs; i++)
             {
-                fmt::print("{:3d} ({:3d}):", i, sim->get_output_count(i));
+                printf("%3d (%3d):", i, sim->get_output_count(i));
                 auto vec = sim->get_output_values(i);
-                for(auto v : vec) fmt::print(" {}", v);
-                fmt::print("\n");
+                for(auto v : vec) printf(" %u", v);
+                printf("\n");
             }
         }
 
@@ -155,16 +153,16 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
     double avg_input_fires = static_cast<double>(input_fire_cnt) / static_cast<double>(runs);
     double avg_accum = static_cast<double>(accumulations) / static_cast<double>(runs);
 
-    fmt::print("\n");
-    fmt::print("---[Metrics]------------------------\n");
-    fmt::print("Average Simulate (s)     : {:9.7f}\n", avg);
-    fmt::print("Median Simulate  (s)     : {:9.7f}\n", sim_times[sim_times.size()/2].count());
-    fmt::print("Input Spikes             : {}\n", avg_input_fires);
-    fmt::print("Output Spikes            : {}\n", ocnts);
-    fmt::print("Accumulations            : {}\n", accumulations);
-    fmt::print("Accumulations/second     : {:.1f}\n", avg_accum / avg);
-    fmt::print("Accumulations/step       : {:.1f}\n", avg_accum / runtime);
-    fmt::print("Effective Speed (KHz)    : {:.4f}\n", (static_cast<double>(runtime) / avg) / (1000) );
+    printf("\n");
+    printf("---[Metrics]------------------------\n");
+    printf("Average Simulate (s)     : %9.7f\n", avg);
+    printf("Median Simulate  (s)     : %9.7f\n", sim_times[sim_times.size()/2].count());
+    printf("Input Spikes             : %lf\n", avg_input_fires);
+    printf("Output Spikes            : %lld\n", ocnts);
+    printf("Accumulations            : %llu\n", accumulations);
+    printf("Accumulations/second     : %.1f\n", avg_accum / avg);
+    printf("Accumulations/step       : %.1f\n", avg_accum / runtime);
+    printf("Effective Speed (KHz)    : %.4f\n", (static_cast<double>(runtime) / avg) / (1000) );
 
     if(active_cycles != 0)
     {
@@ -172,11 +170,11 @@ void run_test(Backend *sim, int inputs, int runs, int seed, int runtime, int inp
         const double clk_speed = 25000000;
         //const double clk_speed = 150000000; // previously 25000000
         double adj_time = (static_cast<double>(active_cycles) / clk_speed) / static_cast<double>(runs);
-        fmt::print("---[FPGA Metrics]-------------------\n");
-        fmt::print("Active Clock Cycles      : {}\n", active_cycles);
-        fmt::print("Adj Runtime (s)          : {:9.7f}\n", adj_time);
-        fmt::print("Adj Accumulations/second : {:.1f}\n", avg_accum / adj_time);
-        fmt::print("Adj Effective Speed (KHz): {:.4f}\n", (runtime / adj_time) / (1000) );
+        printf("---[FPGA Metrics]-------------------\n");
+        printf("Active Clock Cycles      : %llu\n", active_cycles);
+        printf("Adj Runtime (s)          : %9.7f\n", adj_time);
+        printf("Adj Accumulations/second : %.1f\n", avg_accum / adj_time);
+        printf("Adj Effective Speed (KHz): %.4f\n", (runtime / adj_time) / (1000) );
     }
 }
 
@@ -184,7 +182,7 @@ int main(int argc, char **argv)
 {
     if(argc < 6)
     {
-        fmt::print("Usage: {} backend inputs n_runs runtime seed (delay: Y|N) (print_outputs: Y|N) (input_time) (percent connectivity)\n", argv[0]);
+        printf("Usage: %s backend inputs n_runs runtime seed (delay: Y|N) (print_outputs: Y|N) (input_time) (percent connectivity)\n", argv[0]);
         return -1;
     }
 
@@ -203,7 +201,7 @@ int main(int argc, char **argv)
         if(argv[6][0] == 'Y')
         {
             use_delay = true;
-            fmt::print("Using axonal delay\n");
+            printf("Using axonal delay\n");
         }
     }
 
@@ -226,7 +224,7 @@ int main(int argc, char **argv)
 
         if(conn_p == 0) 
         {
-            fmt::print("Connectivity percentage must be greater an integer greater than 0!\n");
+            printf("Connectivity percentage must be greater an integer greater than 0!\n");
             return -1;
         }
     }
@@ -235,44 +233,44 @@ int main(int argc, char **argv)
 
     if(backend == "sim")
     {
-        fmt::print("Using Simulator backend\n");
+        printf("Using Simulator backend\n");
         sim = std::make_unique<Simulator>();
     }
     else if(backend == "sim-debug")
     {
-        fmt::print("Using Simulator backend\n");
+        printf("Using Simulator backend\n");
         sim = std::make_unique<Simulator>(true);
     }
 #ifdef WITH_USB
     else if(backend == "ucaspian")
     {
-        fmt::print("Using uCaspian backend\n");
+        printf("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(false);
     }
     else if(backend == "ucaspian-debug")
     {
-        fmt::print("Using uCaspian backend\n");
+        printf("Using uCaspian backend\n");
         sim = std::make_unique<UsbCaspian>(true);
     }
 #endif
 #ifdef WITH_VERILATOR
     else if(backend == "verilator")
     {
-        fmt::print("Using uCaspian Verilator backend\n");
+        printf("Using uCaspian Verilator backend\n");
         sim = std::make_unique<VerilatorCaspian>(false);
     }
     else if(backend == "verilator-log")
     {
-        fmt::print("Using uCaspian Verilator backend - debug => a2a.fst\n");
+        printf("Using uCaspian Verilator backend - debug => a2a.fst\n");
         sim = std::make_unique<VerilatorCaspian>(true, "a2a.fst");
     }
 #endif
     else
     {
 #ifdef WITH_VERILATOR
-        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug, verilator, verilator-log\n");
+        printf("Backend options: sim, sim-debug, ucaspian, ucaspian-debug, verilator, verilator-log\n");
 #else
-        fmt::print("Backend options: sim, sim-debug, ucaspian, ucaspian-debug\n");
+        printf("Backend options: sim, sim-debug, ucaspian, ucaspian-debug\n");
 #endif
         return 0;
     }
@@ -282,7 +280,7 @@ int main(int argc, char **argv)
     }
     catch(...)
     {
-        fmt::print("There was an error completing the test.\n");
+        printf("There was an error completing the test.\n");
     }
 
     return 0;

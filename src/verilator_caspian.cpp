@@ -6,8 +6,6 @@
 #include <stdexcept>
 #include <memory>
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
 #include "ucaspian.hpp"
 #include "network.hpp"
 #include "constants.hpp"
@@ -139,7 +137,8 @@ namespace caspian
             //if(nop_count > 25000) throw std::runtime_error("Simulation appears frozen");
             if(nop_count > 100) throw std::runtime_error("Simulation appears frozen");
 
-            debug_print("[TIME: {}] Processed {} bytes ", hw_state->net_time, processed);
+            if(hw->m_debug)
+                printf("[TIME: %llu] Processed %d bytes ", hw_state->net_time, processed)
             
             if(processed == hw_state->rec_leftover.size())
             {
@@ -151,7 +150,8 @@ namespace caspian
                 hw_state->rec_leftover = std::move(new_leftover);
             }
 
-            hw_state->debug_print(" - {} leftover\n", hw_state->rec_leftover.size());
+            if(hw->m_debug)
+                printf(" - %zu leftover\n", hw_state->rec_leftover.size())
         }
         while(!cond_func(hw_state.get()));
     }
