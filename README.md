@@ -29,4 +29,4 @@ Many different FPGA-based hardware platforms are planned. The initial implementa
 
 ### uCaspian
 
-Futher details will be available by the end of the summer.
+uCaspian is available in a separate repository at <https://github.com/ORNL/uCaspian>.
