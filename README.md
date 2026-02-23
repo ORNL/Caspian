@@ -1,5 +1,7 @@
 # CASPIAN: Configurable Array of Spiking Programmable Independent Adaptive Neurons
 
+[![DOI](https://zenodo.org/badge/1077862723.svg)](https://doi.org/10.5281/zenodo.18750582)
+
 CASPIAN is a neuromorphic hardware model created by Parker Mitchell at Oak Ridge National Laboratory in 2019. Development is currently ongoing, and this repository is not yet a stable codebase. Use at your own risk.
 
 ## Model Overview
