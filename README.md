@@ -32,3 +32,29 @@ Many different FPGA-based hardware platforms are planned. The initial implementa
 ### uCaspian
 
 uCaspian is available in a separate repository at <https://github.com/ORNL/uCaspian>.
+
+## Citation
+
+If you use Caspian, please cite the following paper:
+
+J. Parker Mitchell, Catherine D. Schuman, Robert M. Patton, and Thomas E. Potok. 2020. Caspian: A Neuromorphic Development Platform. In Proceedings of the 2020 Annual Neuro-Inspired Computational Elements Workshop (NICE '20). Association for Computing Machinery, New York, NY, USA, Article 8, 1–6. https://doi.org/10.1145/3381755.3381764
+
+```bib
+@inproceedings{10.1145/3381755.3381764,
+    author = {Mitchell, J. Parker and Schuman, Catherine D. and Patton, Robert M. and Potok, Thomas E.},
+    title = {Caspian: A Neuromorphic Development Platform},
+    year = {2020},
+    isbn = {9781450377188},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    url = {https://doi.org/10.1145/3381755.3381764},
+    doi = {10.1145/3381755.3381764},
+    abstract = {Current neuromorphic systems often may be difficult to use and costly to deploy. There exists a need for a simple yet flexible neuromorphic development platform which can allow researchers to quickly prototype ideas and applications. Caspian offers a high-level API along with a fast spiking simulator to enable the rapid development of neuromorphic solutions. It further offers an FPGA architecture that allows for simplified deployment -- particularly in SWaP (size, weight, and power) constrained environments. Leveraging both software and hardware, Caspian aims to accelerate development and deployment while enabling new researchers to quickly become productive with a spiking neural network system.},
+    booktitle = {Proceedings of the 2020 Annual Neuro-Inspired Computational Elements Workshop},
+    articleno = {8},
+    numpages = {6},
+    keywords = {spiking neural network, reconfigurable computing, neuromorphic},
+    location = {Heidelberg, Germany},
+    series = {NICE '20}
+}
+```
